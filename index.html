@@ -98,6 +98,21 @@
   .wish-num { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 14px; color: #8fae86; width: 20px; flex-shrink: 0; }
   .wish-title { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 15px; color: #2f3b2f; }
   .wish-author { font-size: 12px; color: #6b7a67; margin-top: 1px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    background: #2b4030; color: #fff; padding: 12px 18px; border-radius: 999px; font-size: 13px;
+    font-family: 'EB Garamond', var(--kr-font), Georgia, serif;
+    display: flex; align-items: center; gap: 12px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); z-index: 100; }
+  .toast button { background: transparent; border: none; color: #c9e0c0; font-weight: 600; cursor: pointer;
+    font-size: 13px; font-family: 'EB Garamond', var(--kr-font), Georgia, serif; }
+  .trash-link { display: block; text-align: center; font-size: 12px; color: #8fae86; margin: 6px 0 14px 0;
+    background: none; border: none; cursor: pointer; text-decoration: underline;
+    font-family: 'EB Garamond', var(--kr-font), Georgia, serif; }
+  .trash-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #eef2ea; }
+  .trash-row:last-child { border-bottom: none; }
+  .trash-title { flex: 1; font-size: 13.5px; color: #6b7a67; font-family: 'EB Garamond', var(--kr-font), Georgia, serif; }
+  .trash-restore { font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid #3f5a45;
+    background: transparent; color: #3f5a45; cursor: pointer;
+    font-family: 'EB Garamond', var(--kr-font), Georgia, serif; }
 </style>
 </head>
 <body>
@@ -114,10 +129,79 @@
   <div class="tabs" id="tabs"></div>
   <button class="add-btn" id="addBtn">+ 새 책 기록하기</button>
   <div id="bookList"></div>
+  <button class="trash-link" id="trashLink" style="display:none;"></button>
+  <div id="trashList"></div>
 </div>
+<div id="toastHost"></div>
 
 <script>
 const STORAGE_KEY = "forest-shelf-books";
+const TRASH_KEY = "forest-shelf-trash";
+
+function loadTrash() {
+  try {
+    const raw = localStorage.getItem(TRASH_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return [];
+}
+
+let trash = loadTrash();
+function saveTrash() { localStorage.setItem(TRASH_KEY, JSON.stringify(trash)); }
+
+let trashOpen = false;
+let undoTimer = null;
+
+function showUndoToast(book) {
+  const host = document.getElementById("toastHost");
+  host.innerHTML =
+    '<div class="toast">' +
+      '"' + escapeHtml(book.title || "제목 없는 책") + '" 삭제됨' +
+      '<button id="undoBtn">되돌리기</button>' +
+    '</div>';
+  document.getElementById("undoBtn").addEventListener("click", () => {
+    restoreFromTrash(book.id);
+    host.innerHTML = "";
+  });
+  clearTimeout(undoTimer);
+  undoTimer = setTimeout(() => { host.innerHTML = ""; }, 6000);
+}
+
+function restoreFromTrash(id) {
+  const idx = trash.findIndex(b => b.id === id);
+  if (idx === -1) return;
+  const [book] = trash.splice(idx, 1);
+  books.unshift(book);
+  saveBooks();
+  saveTrash();
+  render();
+}
+
+function renderTrashLink() {
+  const link = document.getElementById("trashLink");
+  if (trash.length === 0) {
+    link.style.display = "none";
+    document.getElementById("trashList").innerHTML = "";
+    trashOpen = false;
+    return;
+  }
+  link.style.display = "block";
+  link.textContent = trashOpen ? "휴지통 닫기" : "삭제한 책 보기 (" + trash.length + ")";
+}
+
+function renderTrashList() {
+  const el = document.getElementById("trashList");
+  if (!trashOpen || trash.length === 0) { el.innerHTML = ""; return; }
+  el.innerHTML = '<div class="wish-list">' + trash.map(book =>
+    '<div class="trash-row">' +
+      '<div class="trash-title">' + escapeHtml(book.title || "제목 없는 책") + '</div>' +
+      '<button class="trash-restore" data-restore="' + book.id + '">복원</button>' +
+    '</div>'
+  ).join("") + '</div>';
+  el.querySelectorAll("[data-restore]").forEach(btn => {
+    btn.addEventListener("click", () => restoreFromTrash(Number(btn.dataset.restore)));
+  });
+}
 const SPINE_COLORS = ["#8fae86", "#c9b26a", "#b98a72", "#7c9a99", "#a68bb0", "#c9a15a"];
 const STATUSES = ["읽고 싶은 책", "읽는 중", "읽은 책"];
 const TABS = ["전체", ...STATUSES];
@@ -165,6 +249,8 @@ function render() {
   renderCounts();
   renderTabs();
   renderBooks();
+  renderTrashLink();
+  renderTrashList();
 }
 
 function renderCounts() {
@@ -345,13 +431,24 @@ function attachBookEvents() {
     btn.addEventListener("click", e => {
       e.stopPropagation();
       const id = Number(btn.dataset.delete);
-      books = books.filter(b => b.id !== id);
+      const idx = books.findIndex(b => b.id === id);
+      if (idx === -1) return;
+      const [removed] = books.splice(idx, 1);
+      trash.unshift(removed);
       if (openId === id) openId = null;
       saveBooks();
+      saveTrash();
       render();
+      showUndoToast(removed);
     });
   });
 }
+
+document.getElementById("trashLink").addEventListener("click", () => {
+  trashOpen = !trashOpen;
+  renderTrashLink();
+  renderTrashList();
+});
 
 document.getElementById("addBtn").addEventListener("click", () => {
   const id = Date.now();
