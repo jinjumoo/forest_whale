@@ -229,11 +229,17 @@ function loadBooks() {
     if (raw) return JSON.parse(raw);
   } catch (e) {}
   return [{
-    id: 1, title: "숲의 소리를 듣는 시간", author: "", status: "읽은 책", rating: 5,
+    id: 1, seq: 1, title: "숲의 소리를 듣는 시간", author: "", status: "읽은 책", rating: 5,
     line: "고요함이 이렇게 큰 위로가 될 줄이야.",
     thoughts: "바쁠 때일수록 잠깐 멈춰서 숨을 고르는 연습이 필요하다는 걸 다시 느꼈다.",
     cover: "", spine: 0
   }];
+}
+
+function nextSeq() {
+  const all = books.concat(trash);
+  const max = all.reduce((m, b) => Math.max(m, b.seq || 0), 0);
+  return max + 1;
 }
 
 let books = loadBooks();
@@ -315,7 +321,7 @@ function renderWishList(el) {
   }
   el.innerHTML = '<div class="wish-list">' + wish.map((book, i) =>
     '<div class="wish-row" data-wish="' + book.id + '">' +
-      '<div class="wish-num">' + (i + 1) + '</div>' +
+      '<div class="wish-num">' + (book.seq != null ? book.seq : (i + 1)) + '</div>' +
       (book.cover ? '<img class="wish-cover" src="' + book.cover + '" alt="" />' : '<div class="wish-cover"></div>') +
       '<div class="row-main">' +
         '<div class="wish-title">' + (escapeHtml(book.title) || "제목 없는 책") + '</div>' +
@@ -499,7 +505,7 @@ document.getElementById("trashLink").addEventListener("click", () => {
 
 document.getElementById("addBtn").addEventListener("click", () => {
   const id = Date.now();
-  books.unshift({ id, title: "", author: "", status: "읽고 싶은 책", rating: 0, line: "", thoughts: "", cover: "", spine: books.length });
+  books.unshift({ id, seq: nextSeq(), title: "", author: "", status: "읽고 싶은 책", rating: 0, line: "", thoughts: "", cover: "", spine: books.length });
   openId = id;
   currentTab = "전체";
   saveBooks();
