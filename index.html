@@ -64,6 +64,10 @@
   .cover-preview { margin-top: 8px; width: 100%; max-width: 160px; border-radius: 8px; display: block; }
   .status-row { display: flex; gap: 6px; }
   .delete-link { margin-top: 4px; background: transparent; border: none; color: #c98a72; font-size: 12.5px; cursor: pointer; padding: 0; }
+  .save-row { display: flex; align-items: center; gap: 10px; margin: 14px 0 10px 0; }
+  .save-btn { font-family: 'EB Garamond', var(--kr-font), Georgia, serif; font-size: 13.5px; padding: 8px 18px;
+    border-radius: 8px; border: none; background: #3f5a45; color: #fff; cursor: pointer; }
+  .save-status { font-size: 11.5px; color: #8fae86; }
   .empty { text-align: center; color: #6b7a67; font-size: 13px; padding: 30px 0; }
 
   @media (min-width: 700px) {
@@ -112,6 +116,10 @@
   .trash-title { flex: 1; font-size: 13.5px; color: #6b7a67; font-family: 'EB Garamond', var(--kr-font), Georgia, serif; }
   .trash-restore { font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid #3f5a45;
     background: transparent; color: #3f5a45; cursor: pointer;
+    font-family: 'EB Garamond', var(--kr-font), Georgia, serif; }
+  .trash-header { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+  .trash-empty-btn { font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid #c98a72;
+    background: transparent; color: #c98a72; cursor: pointer;
     font-family: 'EB Garamond', var(--kr-font), Georgia, serif; }
 </style>
 </head>
@@ -192,14 +200,23 @@ function renderTrashLink() {
 function renderTrashList() {
   const el = document.getElementById("trashList");
   if (!trashOpen || trash.length === 0) { el.innerHTML = ""; return; }
-  el.innerHTML = '<div class="wish-list">' + trash.map(book =>
-    '<div class="trash-row">' +
-      '<div class="trash-title">' + escapeHtml(book.title || "제목 없는 책") + '</div>' +
-      '<button class="trash-restore" data-restore="' + book.id + '">복원</button>' +
-    '</div>'
-  ).join("") + '</div>';
+  el.innerHTML =
+    '<div class="trash-header"><button class="trash-empty-btn" id="emptyTrashBtn">휴지통 비우기</button></div>' +
+    '<div class="wish-list">' + trash.map(book =>
+      '<div class="trash-row">' +
+        '<div class="trash-title">' + escapeHtml(book.title || "제목 없는 책") + '</div>' +
+        '<button class="trash-restore" data-restore="' + book.id + '">복원</button>' +
+      '</div>'
+    ).join("") + '</div>';
   el.querySelectorAll("[data-restore]").forEach(btn => {
     btn.addEventListener("click", () => restoreFromTrash(Number(btn.dataset.restore)));
+  });
+  document.getElementById("emptyTrashBtn").addEventListener("click", () => {
+    if (confirm("휴지통을 완전히 비울까요? 삭제한 책은 복구할 수 없어요.")) {
+      trash = [];
+      saveTrash();
+      render();
+    }
   });
 }
 const SPINE_COLORS = ["#8fae86", "#c9b26a", "#b98a72", "#7c9a99", "#a68bb0", "#c9a15a"];
@@ -365,6 +382,10 @@ function bookCardHtml(book) {
         '<input type="text" data-field="line" data-book="' + book.id + '" value="' + escapeHtml(book.line) + '" placeholder="이 책을 한 문장으로 표현하면" /></div>' +
       '<div class="field"><div class="field-label">생각할 거리</div>' +
         '<textarea data-field="thoughts" data-book="' + book.id + '" placeholder="이 책이 남긴 질문이나 생각">' + escapeHtml(book.thoughts) + '</textarea></div>' +
+      '<div class="save-row">' +
+        '<button class="save-btn" data-save="' + book.id + '">저장</button>' +
+        '<span class="save-status" id="save-status-' + book.id + '"></span>' +
+      '</div>' +
       '<button class="delete-link" data-delete="' + book.id + '">이 기록 삭제</button>' +
     '</div>' +
   '</div>';
@@ -387,9 +408,20 @@ function attachBookEvents() {
       const book = books.find(b => b.id === id);
       if (book) {
         book[field] = input.value;
-        saveBooks();
-        if (field === "title" || field === "author" || field === "line") renderCounts();
+        const statusEl = document.getElementById("save-status-" + id);
+        if (statusEl) statusEl.textContent = "저장 안 된 변경사항 있음";
       }
+    });
+  });
+
+  document.querySelectorAll("[data-save]").forEach(btn => {
+    btn.addEventListener("click", e => {
+      e.stopPropagation();
+      const id = Number(btn.dataset.save);
+      saveBooks();
+      renderCounts();
+      const statusEl = document.getElementById("save-status-" + id);
+      if (statusEl) statusEl.textContent = "저장됨 ✓";
     });
   });
 
@@ -402,7 +434,12 @@ function attachBookEvents() {
       const reader = new FileReader();
       reader.onload = () => {
         const book = books.find(b => b.id === id);
-        if (book) { book.cover = reader.result; saveBooks(); render(); }
+        if (book) {
+          book.cover = reader.result;
+          render();
+          const statusEl = document.getElementById("save-status-" + id);
+          if (statusEl) statusEl.textContent = "저장 안 된 변경사항 있음";
+        }
       };
       reader.readAsDataURL(file);
     });
@@ -413,7 +450,12 @@ function attachBookEvents() {
       e.stopPropagation();
       const id = Number(btn.dataset.book);
       const book = books.find(b => b.id === id);
-      if (book) { book.status = btn.dataset.status; saveBooks(); render(); }
+      if (book) {
+        book.status = btn.dataset.status;
+        render();
+        const statusEl = document.getElementById("save-status-" + id);
+        if (statusEl) statusEl.textContent = "저장 안 된 변경사항 있음";
+      }
     });
   });
 
@@ -423,7 +465,12 @@ function attachBookEvents() {
       const id = Number(star.dataset.book);
       const rate = Number(star.dataset.rate);
       const book = books.find(b => b.id === id);
-      if (book) { book.rating = book.rating === rate ? 0 : rate; saveBooks(); render(); }
+      if (book) {
+        book.rating = book.rating === rate ? 0 : rate;
+        render();
+        const statusEl = document.getElementById("save-status-" + id);
+        if (statusEl) statusEl.textContent = "저장 안 된 변경사항 있음";
+      }
     });
   });
 
