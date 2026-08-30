@@ -179,6 +179,7 @@ function normalizeBook(b) {
     rating: Number.isFinite(b.rating) ? b.rating : 0,
     line: b.line || "",
     thoughts: b.thoughts || "",
+    quote: b.quote || "",
     cover: b.cover || "",
     spine: b.spine || 0
   };
@@ -577,10 +578,12 @@ function bookCardHtml(book, index, total) {
         ).join("") +
       '</div></div>' +
       '<div class="field"><div class="field-label">평점</div>' + starsHtml(book.rating, false, book.id) + '</div>' +
-      '<div class="field"><div class="field-label">한줄평</div>' +
+      '<div class="field"><div class="field-label">한줄 기록</div>' +
         '<input type="text" data-field="line" data-book="' + book.id + '" value="' + escapeHtml(book.line) + '" placeholder="이 책을 한 문장으로 표현하면" /></div>' +
-      '<div class="field"><div class="field-label">생각할 거리</div>' +
+      '<div class="field"><div class="field-label">생각의 여백</div>' +
         '<textarea data-field="thoughts" data-book="' + book.id + '" placeholder="이 책이 남긴 질문이나 생각">' + escapeHtml(book.thoughts) + '</textarea></div>' +
+      '<div class="field"><div class="field-label">마음에 남은 문장들</div>' +
+        '<textarea data-field="quote" data-book="' + book.id + '" placeholder="마음에 남은 문장을 옮겨 적어보세요">' + escapeHtml(book.quote || "") + '</textarea></div>' +
       '<div class="save-row">' +
         '<button class="save-btn" data-save="' + book.id + '">저장</button>' +
         '<span class="save-status" id="save-status-' + book.id + '"></span>' +
@@ -710,7 +713,7 @@ document.getElementById("trashLink").addEventListener("click", () => {
 
 document.getElementById("addBtn").addEventListener("click", () => {
   const id = Date.now();
-  books.unshift({ id, seq: nextSeq(), title: "", author: "", status: "읽고 싶은 책", rating: 0, line: "", thoughts: "", cover: "", spine: books.length });
+  books.unshift({ id, seq: nextSeq(), title: "", author: "", status: "읽고 싶은 책", rating: 0, line: "", thoughts: "", quote: "", cover: "", spine: books.length });
   openId = id;
   currentTab = "전체";
   saveBooks();
