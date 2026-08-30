@@ -69,6 +69,17 @@
     border-radius: 8px; border: none; background: #3f5a45; color: #fff; cursor: pointer; }
   .save-status { font-size: 11.5px; color: #8fae86; }
   .empty { text-align: center; color: #6b7a67; font-size: 13px; padding: 30px 0; }
+  .list-actions { display: flex; justify-content: flex-end; margin: -6px 0 10px 0; }
+  .select-toggle { font-family: 'EB Garamond', var(--kr-font), Georgia, serif; font-size: 12px;
+    background: none; border: none; color: #6b7a67; text-decoration: underline; cursor: pointer; }
+  .select-check { width: 18px; height: 18px; flex-shrink: 0; accent-color: #3f5a45; }
+  .select-bar { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    background: #2b4030; color: #fff; padding: 10px 12px 10px 18px; border-radius: 999px; font-size: 13px;
+    font-family: 'EB Garamond', var(--kr-font), Georgia, serif;
+    display: flex; align-items: center; gap: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.25); z-index: 100; }
+  .select-bar button { font-family: 'EB Garamond', var(--kr-font), Georgia, serif; font-size: 13px; cursor: pointer; border: none; border-radius: 999px; padding: 7px 14px; }
+  .select-bar .cancel-btn { background: transparent; color: #c9e0c0; }
+  .select-bar .confirm-btn { background: #c98a72; color: #fff; }
 
   @media (min-width: 700px) {
     .wrap { max-width: 720px; padding: 36px 32px 60px 32px; }
@@ -136,6 +147,7 @@
   <div class="counts" id="counts"></div>
   <div class="tabs" id="tabs"></div>
   <button class="add-btn" id="addBtn">+ 새 책 기록하기</button>
+  <div class="list-actions"><button class="select-toggle" id="selectToggle">선택해서 삭제</button></div>
   <div id="bookList"></div>
   <button class="trash-link" id="trashLink" style="display:none;"></button>
   <div id="trashList"></div>
@@ -159,6 +171,8 @@ function saveTrash() { localStorage.setItem(TRASH_KEY, JSON.stringify(trash)); }
 
 let trashOpen = false;
 let undoTimer = null;
+let selectMode = false;
+let selectedIds = new Set();
 
 function showUndoToast(book) {
   const host = document.getElementById("toastHost");
@@ -276,6 +290,61 @@ function render() {
   renderTrashList();
 }
 
+function toggleSelect(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  renderBooks();
+}
+
+function renderSelectBar() {
+  const toggleBtn = document.getElementById("selectToggle");
+  toggleBtn.textContent = selectMode ? "선택 취소" : "선택해서 삭제";
+  document.getElementById("addBtn").style.display = selectMode ? "none" : "block";
+
+  let bar = document.getElementById("selectBar");
+  if (bar) bar.remove();
+
+  if (!selectMode) return;
+
+  bar = document.createElement("div");
+  bar.id = "selectBar";
+  bar.className = "select-bar";
+  bar.innerHTML =
+    selectedIds.size + '개 선택됨' +
+    '<button class="cancel-btn" id="selectCancelBtn">취소</button>' +
+    '<button class="confirm-btn" id="selectDeleteBtn"' + (selectedIds.size === 0 ? ' disabled style="opacity:0.5"' : '') + '>삭제</button>';
+  document.body.appendChild(bar);
+
+  document.getElementById("selectCancelBtn").addEventListener("click", exitSelectMode);
+  document.getElementById("selectDeleteBtn").addEventListener("click", () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(selectedIds.size + "개 항목을 삭제할까요? (휴지통으로 이동돼요)")) return;
+    selectedIds.forEach(id => {
+      const idx = books.findIndex(b => b.id === id);
+      if (idx !== -1) {
+        const [removed] = books.splice(idx, 1);
+        trash.unshift(removed);
+      }
+    });
+    saveBooks();
+    saveTrash();
+    exitSelectMode();
+  });
+}
+
+function exitSelectMode() {
+  selectMode = false;
+  selectedIds = new Set();
+  render();
+}
+
+document.getElementById("selectToggle").addEventListener("click", () => {
+  selectMode = !selectMode;
+  selectedIds = new Set();
+  openId = null;
+  render();
+});
+
 function renderCounts() {
   const counts = {};
   STATUSES.forEach(s => counts[s] = books.filter(b => b.status === s).length);
@@ -306,21 +375,25 @@ function renderBooks() {
 
   if (visible.length === 0) {
     el.innerHTML = '<div class="empty">아직 이 서가에는 책이 없어요.</div>';
+    renderSelectBar();
     return;
   }
 
   el.innerHTML = visible.map(book => bookCardHtml(book)).join("");
   attachBookEvents();
+  renderSelectBar();
 }
 
 function renderWishList(el) {
   const wish = books.filter(b => b.status === "읽고 싶은 책");
   if (wish.length === 0) {
     el.innerHTML = '<div class="empty">읽고 싶은 책이 아직 없어요.</div>';
+    renderSelectBar();
     return;
   }
   el.innerHTML = '<div class="wish-list">' + wish.map((book, i) =>
     '<div class="wish-row" data-wish="' + book.id + '">' +
+      (selectMode ? '<input type="checkbox" class="select-check" data-select="' + book.id + '"' + (selectedIds.has(book.id) ? ' checked' : '') + ' />' : '') +
       '<div class="wish-num">' + (book.seq != null ? book.seq : (i + 1)) + '</div>' +
       (book.cover ? '<img class="wish-cover" src="' + book.cover + '" alt="" />' : '<div class="wish-cover"></div>') +
       '<div class="row-main">' +
@@ -332,8 +405,13 @@ function renderWishList(el) {
   ).join("") + '</div>';
 
   el.querySelectorAll("[data-wish]").forEach(row => {
-    row.addEventListener("click", () => {
+    row.addEventListener("click", (e) => {
       const id = Number(row.dataset.wish);
+      if (selectMode) {
+        if (e.target.matches("[data-select]")) return;
+        toggleSelect(id);
+        return;
+      }
       const book = books.find(b => b.id === id);
       if (book) {
         book.status = "읽는 중";
@@ -344,6 +422,13 @@ function renderWishList(el) {
       }
     });
   });
+
+  el.querySelectorAll("[data-select]").forEach(cb => {
+    cb.addEventListener("click", e => e.stopPropagation());
+    cb.addEventListener("change", () => toggleSelect(Number(cb.dataset.select)));
+  });
+
+  renderSelectBar();
 }
 
 function bookCardHtml(book) {
@@ -356,6 +441,7 @@ function bookCardHtml(book) {
 
   return '<div class="book-card">' +
     '<div class="book-row" data-toggle="' + book.id + '">' +
+      (selectMode ? '<input type="checkbox" class="select-check" data-select="' + book.id + '"' + (selectedIds.has(book.id) ? ' checked' : '') + ' />' : '') +
       '<div class="spine" style="background:' + spineColor + '"></div>' +
       coverImg +
       '<div class="row-main">' +
@@ -366,7 +452,7 @@ function bookCardHtml(book) {
       ratingBadge +
       '<span class="chevron' + (isOpen ? ' open' : '') + '">›</span>' +
     '</div>' +
-    '<div class="detail' + (isOpen ? ' open' : '') + '">' +
+    '<div class="detail' + (isOpen && !selectMode ? ' open' : '') + '">' +
       '<div class="field"><div class="field-label">책 제목</div>' +
         '<input type="text" data-field="title" data-book="' + book.id + '" value="' + escapeHtml(book.title) + '" placeholder="책 제목을 입력하세요" /></div>' +
       '<div class="field"><div class="field-label">저자</div>' +
@@ -399,11 +485,21 @@ function bookCardHtml(book) {
 
 function attachBookEvents() {
   document.querySelectorAll("[data-toggle]").forEach(row => {
-    row.addEventListener("click", () => {
+    row.addEventListener("click", (e) => {
       const id = Number(row.dataset.toggle);
+      if (selectMode) {
+        if (e.target.matches("[data-select]")) return;
+        toggleSelect(id);
+        return;
+      }
       openId = openId === id ? null : id;
       render();
     });
+  });
+
+  document.querySelectorAll(".book-row [data-select]").forEach(cb => {
+    cb.addEventListener("click", e => e.stopPropagation());
+    cb.addEventListener("change", () => toggleSelect(Number(cb.dataset.select)));
   });
 
   document.querySelectorAll("input[data-field], textarea[data-field]").forEach(input => {
