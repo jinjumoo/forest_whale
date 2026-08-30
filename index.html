@@ -38,7 +38,7 @@
   .book-card { background: #fbf9f3; border-radius: 14px; margin-bottom: 10px; overflow: hidden; border: 1px solid #d8e0d2; }
   .book-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; }
   .spine { width: 10px; height: 44px; border-radius: 3px; flex-shrink: 0; }
-  .cover-thumb { width: 34px; height: 44px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+  .cover-thumb { width: 34px; height: 44px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: #e5ece2; }
   .book-title { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 16px; font-weight: 500; color: #2f3b2f;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .book-author { font-size: 11.5px; color: #6b7a67; margin-top: 1px; }
@@ -100,19 +100,19 @@
     .stars.small span { font-size: 14px; }
     .field-label { font-size: 13.5px; }
     .field input, .field textarea { font-size: 15.5px; padding: 11px 13px; }
-    .wish-row { padding: 16px 18px; }
+    .wish-row { padding: 16px 18px; gap: 16px; }
     .wish-num { font-size: 16px; width: 24px; }
-    .wish-cover { width: 36px; height: 48px; }
-    .wish-title { font-size: 17px; }
-    .wish-author { font-size: 13.5px; }
+    .wish-cover { width: 42px; height: 54px; }
+    .wish-title { font-size: 19px; }
+    .wish-author { font-size: 14px; }
   }
   .wish-list { background: #fbf9f3; border-radius: 14px; border: 1px solid #d8e0d2; overflow: hidden; }
-  .wish-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; border-bottom: 1px solid #eef2ea; }
+  .wish-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; border-bottom: 1px solid #eef2ea; }
   .wish-row:last-child { border-bottom: none; }
-  .wish-cover { width: 30px; height: 40px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: #e5ece2; }
+  .wish-cover { width: 34px; height: 44px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: #e5ece2; }
   .wish-num { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 14px; color: #8fae86; width: 20px; flex-shrink: 0; }
-  .wish-title { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 15px; color: #2f3b2f; }
-  .wish-author { font-size: 12px; color: #6b7a67; margin-top: 1px; }
+  .wish-title { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 16px; font-weight: 500; color: #2f3b2f; }
+  .wish-author { font-size: 11.5px; color: #6b7a67; margin-top: 1px; }
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
     background: #2b4030; color: #fff; padding: 12px 18px; border-radius: 999px; font-size: 13px;
     font-family: 'EB Garamond', var(--kr-font), Georgia, serif;
@@ -241,7 +241,8 @@ function renderTrashList() {
     }
   });
 }
-const SPINE_COLORS = ["#8fae86", "#c9b26a", "#b98a72", "#7c9a99", "#a68bb0", "#c9a15a"];
+const RATING_SPINE_COLORS = ["#f0e6da", "#eccdb8", "#e3ac8f", "#d88f6b", "#c9724a", "#b0562f"];
+function spineColorFor(book) { return RATING_SPINE_COLORS[book.rating || 0]; }
 const STATUSES = ["읽고 싶은 책", "읽는 중", "읽은 책"];
 const TABS = ["전체", ...STATUSES];
 
@@ -387,7 +388,7 @@ function renderBooks() {
     return;
   }
 
-  el.innerHTML = visible.map(book => bookCardHtml(book)).join("");
+  el.innerHTML = visible.map((book, i) => bookCardHtml(book, i, visible.length)).join("");
   attachBookEvents();
   renderSelectBar();
 }
@@ -403,6 +404,7 @@ function renderWishList(el) {
     '<div class="wish-row" data-wish="' + book.id + '">' +
       (selectMode ? '<input type="checkbox" class="select-check" data-select="' + book.id + '"' + (selectedIds.has(book.id) ? ' checked' : '') + ' />' : '') +
       '<div class="wish-num">' + (wish.length - i) + '</div>' +
+      '<div class="spine" style="background:' + spineColorFor(book) + '"></div>' +
       (book.cover ? '<img class="wish-cover" src="' + book.cover + '" alt="" />' : '<div class="wish-cover"></div>') +
       '<div class="row-main">' +
         '<div class="wish-title">' + (escapeHtml(book.title) || "제목 없는 책") + '</div>' +
@@ -439,17 +441,19 @@ function renderWishList(el) {
   renderSelectBar();
 }
 
-function bookCardHtml(book) {
-  const spineColor = SPINE_COLORS[book.spine % SPINE_COLORS.length];
+function bookCardHtml(book, index, total) {
+  const spineColor = spineColorFor(book);
   const isOpen = openId === book.id;
-  const coverImg = book.cover ? '<img class="cover-thumb" src="' + book.cover + '" alt="" />' : "";
+  const coverImg = book.cover ? '<img class="cover-thumb" src="' + book.cover + '" alt="" />' : '<div class="cover-thumb"></div>';
   const authorLine = book.author ? '<div class="book-author">' + escapeHtml(book.author) + '</div>' : "";
   const lineHtml = book.line ? '<div class="book-line">' + escapeHtml(book.line) + '</div>' : "";
   const ratingBadge = book.rating > 0 ? starsHtml(book.rating, true) : "";
+  const num = (index != null && total != null) ? (total - index) : null;
 
   return '<div class="book-card">' +
     '<div class="book-row" data-toggle="' + book.id + '">' +
       (selectMode ? '<input type="checkbox" class="select-check" data-select="' + book.id + '"' + (selectedIds.has(book.id) ? ' checked' : '') + ' />' : '') +
+      (num != null ? '<div class="wish-num">' + num + '</div>' : '') +
       '<div class="spine" style="background:' + spineColor + '"></div>' +
       coverImg +
       '<div class="row-main">' +
