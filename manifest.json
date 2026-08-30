@@ -1,6 +1,6 @@
 {
-  "name": "숲 속 서재",
-  "short_name": "숲속서재",
+  "name": "Whale's Pages",
+  "short_name": "Whale's Pages",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#eef2ea",
