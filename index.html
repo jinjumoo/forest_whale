@@ -3,71 +3,92 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>숲 속 서재</title>
+<title>고래의 문장들</title>
 <link rel="manifest" href="manifest.json" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-title" content="숲 속 서재" />
+<meta name="apple-mobile-web-app-title" content="고래의 문장들" />
 <meta name="theme-color" content="#3f5a45" />
+<meta name="color-scheme" content="light" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=EB+Garamond:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=EB+Garamond:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Song+Myung&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
 <style>
   * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: #eef2ea;
-    font-family: 'EB Garamond', Georgia, serif;
-    color: #2f3b2f;
-  }
+  :root { --kr-font: 'Song Myung'; }
+  html { background: #eef2ea; }
+  body { margin: 0; background: #eef2ea; min-height: 100vh; font-family: 'EB Garamond', var(--kr-font), Georgia, serif; color: #2f3b2f; }
   .wrap { max-width: 460px; margin: 0 auto; padding: 22px 16px 40px 16px; }
-  .eyebrow { font-size: 11px; letter-spacing: 2px; color: #3f5a45; text-transform: uppercase; }
-  h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 28px; font-weight: 500; color: #2b4030; margin: 2px 0 0 0; }
+  .header-row { display: flex; align-items: flex-end; gap: 4px; }
+  .whale-icon { width: 44px; height: auto; flex-shrink: 0; display: block; margin-bottom: 2px; }
+  .header-text { margin: 0; padding: 0; text-align: left; }
+  .eyebrow { display: block; margin: 0; padding: 0; font-size: 11px; letter-spacing: 2px; color: #3f5a45; text-transform: uppercase; line-height: 1; }
+  h1 { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 28px; font-weight: 500; color: #2b4030;
+    margin: 4px 0 0 -0.06em; padding: 0; line-height: 1; text-align: left; }
+  .font-picker { display: flex; gap: 6px; margin: 14px 0 4px 0; flex-wrap: wrap; }
+  .font-btn { font-size: 12px; padding: 7px 11px; border-radius: 999px; border: 1px solid #d8e0d2;
+    background: #fff; color: #2f3b2f; cursor: pointer; }
+  .font-btn.active { border-color: #3f5a45; background: #3f5a45; color: #fff; }
   .counts { display: flex; gap: 14px; margin: 16px 0 18px 0; }
   .count-card { flex: 1; background: #fbf9f3; border: 1px solid #d8e0d2; border-radius: 10px; padding: 8px 10px; }
-  .count-num { font-family: 'Playfair Display', Georgia, serif; font-size: 18px; color: #2b4030; }
+  .count-num { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 18px; color: #2b4030; }
   .count-label { font-size: 10.5px; color: #6b7a67; margin-top: 1px; }
   .tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
-  .tab-btn, .status-btn, .edition-btn {
-    font-family: 'EB Garamond', Georgia, serif; font-size: 12.5px; padding: 7px 12px;
-    border-radius: 999px; border: 1px solid #d8e0d2; background: transparent; color: #6b7a67; cursor: pointer;
-  }
+  .tab-btn, .status-btn { font-family: 'EB Garamond', var(--kr-font), Georgia, serif; font-size: 12.5px; padding: 7px 12px;
+    border-radius: 999px; border: 1px solid #d8e0d2; background: transparent; color: #6b7a67; cursor: pointer; }
   .tab-btn.active, .status-btn.active { border-color: #3f5a45; background: #3f5a45; color: #fff; }
-  .add-btn {
-    width: 100%; padding: 11px; margin-bottom: 16px; border-radius: 10px;
-    border: 1px dashed #3f5a45; background: transparent; color: #3f5a45; font-size: 13px; cursor: pointer;
-  }
+  .add-btn { width: 100%; padding: 11px; margin-bottom: 16px; border-radius: 10px;
+    border: 1px dashed #3f5a45; background: transparent; color: #3f5a45; font-size: 13px; cursor: pointer; }
   .book-card { background: #fbf9f3; border-radius: 14px; margin-bottom: 10px; overflow: hidden; border: 1px solid #d8e0d2; }
   .book-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; }
   .spine { width: 10px; height: 44px; border-radius: 3px; flex-shrink: 0; }
   .cover-thumb { width: 34px; height: 44px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
-  .book-title { font-family: 'Playfair Display', Georgia, serif; font-size: 16px; font-weight: 500; color: #2f3b2f;
+  .book-title { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 16px; font-weight: 500; color: #2f3b2f;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .book-author { font-size: 11.5px; color: #6b7a67; margin-top: 1px; }
   .book-line { font-size: 12.5px; color: #6b7a67; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .row-main { flex: 1; min-width: 0; }
   .chevron { color: #6b7a67; font-size: 12px; transition: transform 0.15s; }
   .chevron.open { transform: rotate(90deg); }
-  .stars span { font-size: 16px; cursor: pointer; color: #d8e0d2; line-height: 1; user-select: none; }
+  .stars span { font-size: 17px; cursor: pointer; color: #d8e0d2; line-height: 1; user-select: none; }
   .stars span.filled { color: #c98a72; }
-  .stars.small span { font-size: 11px; cursor: default; }
+  .stars.small span { font-size: 12px; cursor: default; }
   .detail { padding: 4px 16px 18px 16px; border-top: 1px solid #d8e0d2; display: none; }
   .detail.open { display: block; }
   .field { margin-bottom: 12px; }
   .field-label { font-size: 11.5px; color: #6b7a67; margin-bottom: 5px; }
-  .field input, .field textarea {
-    width: 100%; box-sizing: border-box; padding: 9px 11px; border-radius: 8px;
-    border: 1px solid #d8e0d2; background: #fff; font-family: 'EB Garamond', Georgia, serif;
-    font-size: 13.5px; color: #2f3b2f; outline: none;
-  }
+  .field input, .field textarea { width: 100%; box-sizing: border-box; padding: 9px 11px; border-radius: 8px;
+    border: 1px solid #d8e0d2; background: #fff; font-family: 'EB Garamond', var(--kr-font), Georgia, serif;
+    font-size: 13.5px; color: #2f3b2f; outline: none; }
   .field textarea { min-height: 64px; resize: vertical; }
+  .cover-input-row { display: flex; gap: 6px; align-items: center; }
+  .cover-input-row input[type=text] { flex: 1; }
+  .upload-btn { font-size: 12px; padding: 9px 10px; border-radius: 8px; border: 1px solid #d8e0d2;
+    background: #fff; color: #3f5a45; cursor: pointer; white-space: nowrap; }
+  .cover-preview { margin-top: 8px; width: 100%; max-width: 160px; border-radius: 8px; display: block; }
   .status-row { display: flex; gap: 6px; }
   .delete-link { margin-top: 4px; background: transparent; border: none; color: #c98a72; font-size: 12.5px; cursor: pointer; padding: 0; }
   .empty { text-align: center; color: #6b7a67; font-size: 13px; padding: 30px 0; }
+  .wish-list { background: #fbf9f3; border-radius: 14px; border: 1px solid #d8e0d2; overflow: hidden; }
+  .wish-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; border-bottom: 1px solid #eef2ea; }
+  .wish-row:last-child { border-bottom: none; }
+  .wish-cover { width: 30px; height: 40px; object-fit: cover; border-radius: 4px; flex-shrink: 0; background: #e5ece2; }
+  .wish-num { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 14px; color: #8fae86; width: 20px; flex-shrink: 0; }
+  .wish-title { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 15px; color: #2f3b2f; }
+  .wish-author { font-size: 12px; color: #6b7a67; margin-top: 1px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="eyebrow">forest shelf</div>
-  <h1>숲 속 서재</h1>
+  <div class="header-row">
+    <img class="whale-icon" src="data:image/png;base64,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" alt="" />
+    <div class="header-text">
+      <div class="eyebrow">WHALE&#39;S PAGES</div>
+      <h1>고래의 문장들</h1>
+    </div>
+  </div>
+
+  <div class="font-picker" id="fontPicker"></div>
 
   <div class="counts" id="counts"></div>
   <div class="tabs" id="tabs"></div>
@@ -77,6 +98,37 @@
 
 <script>
 const STORAGE_KEY = "forest-shelf-books";
+const FONT_STORAGE_KEY = "forest-shelf-kr-font";
+const KR_FONTS = [
+  { key: "pretendard", label: "프리텐다드", family: "'Pretendard'" },
+  { key: "notosans", label: "노토 산스", family: "'Noto Sans KR'" },
+  { key: "plex", label: "IBM 플렉스", family: "'IBM Plex Sans KR'" },
+  { key: "song", label: "손글씨 감성", family: "'Song Myung'" },
+];
+
+function loadKrFont() {
+  return localStorage.getItem(FONT_STORAGE_KEY) || "song";
+}
+
+function applyKrFont(key) {
+  const found = KR_FONTS.find(f => f.key === key) || KR_FONTS[0];
+  document.documentElement.style.setProperty("--kr-font", found.family);
+  localStorage.setItem(FONT_STORAGE_KEY, found.key);
+}
+
+function renderFontPicker() {
+  const current = loadKrFont();
+  const el = document.getElementById("fontPicker");
+  el.innerHTML = KR_FONTS.map(f =>
+    '<button class="font-btn' + (f.key === current ? ' active' : '') + '" data-font="' + f.key + '">' + f.label + '</button>'
+  ).join("");
+  el.querySelectorAll(".font-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      applyKrFont(btn.dataset.font);
+      renderFontPicker();
+    });
+  });
+}
 const SPINE_COLORS = ["#8fae86", "#c9b26a", "#b98a72", "#7c9a99", "#a68bb0", "#c9a15a"];
 const STATUSES = ["읽고 싶은 책", "읽는 중", "읽은 책"];
 const TABS = ["전체", ...STATUSES];
@@ -87,7 +139,7 @@ function loadBooks() {
     if (raw) return JSON.parse(raw);
   } catch (e) {}
   return [{
-    id: 1, title: "숲의 소리를 듣는 시간", status: "읽은 책", rating: 5,
+    id: 1, title: "숲의 소리를 듣는 시간", author: "", status: "읽은 책", rating: 5,
     line: "고요함이 이렇게 큰 위로가 될 줄이야.",
     thoughts: "바쁠 때일수록 잠깐 멈춰서 숨을 고르는 연습이 필요하다는 걸 다시 느꼈다.",
     cover: "", spine: 0
@@ -98,9 +150,7 @@ let books = loadBooks();
 let currentTab = "전체";
 let openId = null;
 
-function saveBooks() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(books));
-}
+function saveBooks() { localStorage.setItem(STORAGE_KEY, JSON.stringify(books)); }
 
 function escapeHtml(str) {
   const div = document.createElement("div");
@@ -108,14 +158,14 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
-function starsHtml(rating, size, readOnly, bookId) {
+function starsHtml(rating, readOnly, bookId) {
   let html = '<div class="stars' + (readOnly ? ' small' : '') + '">';
   for (let n = 1; n <= 5; n++) {
     const filled = n <= rating ? " filled" : "";
     if (readOnly) {
-      html += '<span class="' + filled.trim() + '">●</span>';
+      html += '<span class="' + filled.trim() + '">★</span>';
     } else {
-      html += '<span class="' + filled.trim() + '" data-book="' + bookId + '" data-rate="' + n + '">●</span>';
+      html += '<span class="' + filled.trim() + '" data-book="' + bookId + '" data-rate="' + n + '">★</span>';
     }
   }
   html += "</div>";
@@ -131,8 +181,7 @@ function render() {
 function renderCounts() {
   const counts = {};
   STATUSES.forEach(s => counts[s] = books.filter(b => b.status === s).length);
-  const el = document.getElementById("counts");
-  el.innerHTML = STATUSES.map(s =>
+  document.getElementById("counts").innerHTML = STATUSES.map(s =>
     '<div class="count-card"><div class="count-num">' + counts[s] + '</div><div class="count-label">' + s + '</div></div>'
   ).join("");
 }
@@ -143,58 +192,107 @@ function renderTabs() {
     '<button class="tab-btn' + (t === currentTab ? ' active' : '') + '" data-tab="' + t + '">' + t + '</button>'
   ).join("");
   el.querySelectorAll(".tab-btn").forEach(btn => {
-    btn.addEventListener("click", () => { currentTab = btn.dataset.tab; render(); });
+    btn.addEventListener("click", () => { currentTab = btn.dataset.tab; openId = null; render(); });
   });
 }
 
 function renderBooks() {
-  const visible = currentTab === "전체" ? books : books.filter(b => b.status === currentTab);
   const el = document.getElementById("bookList");
+
+  if (currentTab === "읽고 싶은 책") {
+    renderWishList(el);
+    return;
+  }
+
+  const visible = currentTab === "전체" ? books : books.filter(b => b.status === currentTab);
 
   if (visible.length === 0) {
     el.innerHTML = '<div class="empty">아직 이 서가에는 책이 없어요.</div>';
     return;
   }
 
-  el.innerHTML = visible.map(book => {
-    const spineColor = SPINE_COLORS[book.spine % SPINE_COLORS.length];
-    const isOpen = openId === book.id;
-    const coverImg = book.cover ? '<img class="cover-thumb" src="' + escapeHtml(book.cover) + '" alt="" />' : "";
-    const lineHtml = book.line ? '<div class="book-line">' + escapeHtml(book.line) + '</div>' : "";
-    const ratingBadge = book.rating > 0 ? starsHtml(book.rating, 11, true) : "";
-
-    return '<div class="book-card">' +
-      '<div class="book-row" data-toggle="' + book.id + '">' +
-        '<div class="spine" style="background:' + spineColor + '"></div>' +
-        coverImg +
-        '<div class="row-main">' +
-          '<div class="book-title">' + (escapeHtml(book.title) || "제목 없는 책") + '</div>' +
-          lineHtml +
-        '</div>' +
-        ratingBadge +
-        '<span class="chevron' + (isOpen ? ' open' : '') + '">›</span>' +
-      '</div>' +
-      '<div class="detail' + (isOpen ? ' open' : '') + '">' +
-        '<div class="field"><div class="field-label">책 제목</div>' +
-          '<input type="text" data-field="title" data-book="' + book.id + '" value="' + escapeHtml(book.title) + '" placeholder="책 제목을 입력하세요" /></div>' +
-        '<div class="field"><div class="field-label">책 커버 이미지 URL (선택)</div>' +
-          '<input type="text" data-field="cover" data-book="' + book.id + '" value="' + escapeHtml(book.cover) + '" placeholder="https://..." /></div>' +
-        '<div class="field"><div class="field-label">읽음 상태</div><div class="status-row">' +
-          STATUSES.map(s =>
-            '<button class="status-btn' + (book.status === s ? ' active' : '') + '" data-book="' + book.id + '" data-status="' + s + '">' + s + '</button>'
-          ).join("") +
-        '</div></div>' +
-        '<div class="field"><div class="field-label">평점</div>' + starsHtml(book.rating, 22, false, book.id) + '</div>' +
-        '<div class="field"><div class="field-label">한줄평</div>' +
-          '<input type="text" data-field="line" data-book="' + book.id + '" value="' + escapeHtml(book.line) + '" placeholder="이 책을 한 문장으로 표현하면" /></div>' +
-        '<div class="field"><div class="field-label">생각할 거리</div>' +
-          '<textarea data-field="thoughts" data-book="' + book.id + '" placeholder="이 책이 남긴 질문이나 생각">' + escapeHtml(book.thoughts) + '</textarea></div>' +
-        '<button class="delete-link" data-delete="' + book.id + '">이 기록 삭제</button>' +
-      '</div>' +
-    '</div>';
-  }).join("");
-
+  el.innerHTML = visible.map(book => bookCardHtml(book)).join("");
   attachBookEvents();
+}
+
+function renderWishList(el) {
+  const wish = books.filter(b => b.status === "읽고 싶은 책");
+  if (wish.length === 0) {
+    el.innerHTML = '<div class="empty">읽고 싶은 책이 아직 없어요.</div>';
+    return;
+  }
+  el.innerHTML = '<div class="wish-list">' + wish.map((book, i) =>
+    '<div class="wish-row" data-wish="' + book.id + '">' +
+      '<div class="wish-num">' + (i + 1) + '</div>' +
+      (book.cover ? '<img class="wish-cover" src="' + book.cover + '" alt="" />' : '<div class="wish-cover"></div>') +
+      '<div class="row-main">' +
+        '<div class="wish-title">' + (escapeHtml(book.title) || "제목 없는 책") + '</div>' +
+        (book.author ? '<div class="wish-author">' + escapeHtml(book.author) + '</div>' : '') +
+      '</div>' +
+      '<span class="chevron">›</span>' +
+    '</div>'
+  ).join("") + '</div>';
+
+  el.querySelectorAll("[data-wish]").forEach(row => {
+    row.addEventListener("click", () => {
+      const id = Number(row.dataset.wish);
+      const book = books.find(b => b.id === id);
+      if (book) {
+        book.status = "읽는 중";
+        saveBooks();
+        currentTab = "읽는 중";
+        openId = id;
+        render();
+      }
+    });
+  });
+}
+
+function bookCardHtml(book) {
+  const spineColor = SPINE_COLORS[book.spine % SPINE_COLORS.length];
+  const isOpen = openId === book.id;
+  const coverImg = book.cover ? '<img class="cover-thumb" src="' + book.cover + '" alt="" />' : "";
+  const authorLine = book.author ? '<div class="book-author">' + escapeHtml(book.author) + '</div>' : "";
+  const lineHtml = book.line ? '<div class="book-line">' + escapeHtml(book.line) + '</div>' : "";
+  const ratingBadge = book.rating > 0 ? starsHtml(book.rating, true) : "";
+
+  return '<div class="book-card">' +
+    '<div class="book-row" data-toggle="' + book.id + '">' +
+      '<div class="spine" style="background:' + spineColor + '"></div>' +
+      coverImg +
+      '<div class="row-main">' +
+        '<div class="book-title">' + (escapeHtml(book.title) || "제목 없는 책") + '</div>' +
+        authorLine +
+        lineHtml +
+      '</div>' +
+      ratingBadge +
+      '<span class="chevron' + (isOpen ? ' open' : '') + '">›</span>' +
+    '</div>' +
+    '<div class="detail' + (isOpen ? ' open' : '') + '">' +
+      '<div class="field"><div class="field-label">책 제목</div>' +
+        '<input type="text" data-field="title" data-book="' + book.id + '" value="' + escapeHtml(book.title) + '" placeholder="책 제목을 입력하세요" /></div>' +
+      '<div class="field"><div class="field-label">저자</div>' +
+        '<input type="text" data-field="author" data-book="' + book.id + '" value="' + escapeHtml(book.author || "") + '" placeholder="저자명을 입력하세요" /></div>' +
+      '<div class="field"><div class="field-label">책 커버</div>' +
+        '<div class="cover-input-row">' +
+          '<input type="text" data-field="cover" data-book="' + book.id + '" value="' + (book.cover && !book.cover.startsWith("data:") ? escapeHtml(book.cover) : "") + '" placeholder="이미지 URL 붙여넣기" />' +
+          '<label class="upload-btn">사진 첨부<input type="file" accept="image/*" data-cover-upload="' + book.id + '" style="display:none" /></label>' +
+        '</div>' +
+        (book.cover ? '<img class="cover-preview" src="' + book.cover + '" alt="" />' : '') +
+      '</div>' +
+      '<div class="field"><div class="field-label">읽음 상태</div><div class="status-row">' +
+        STATUSES.map(s =>
+          '<button class="status-btn' + (book.status === s ? ' active' : '') + '" data-book="' + book.id + '" data-status="' + s + '">' + s + '</button>'
+        ).join("") +
+      '</div></div>' +
+      '<div class="field"><div class="field-label">평점</div>' + starsHtml(book.rating, false, book.id) + '</div>' +
+      '<div class="field"><div class="field-label">한줄평</div>' +
+        '<input type="text" data-field="line" data-book="' + book.id + '" value="' + escapeHtml(book.line) + '" placeholder="이 책을 한 문장으로 표현하면" /></div>' +
+      '<div class="field"><div class="field-label">생각할 거리</div>' +
+        '<textarea data-field="thoughts" data-book="' + book.id + '" placeholder="이 책이 남긴 질문이나 생각">' + escapeHtml(book.thoughts) + '</textarea></div>' +
+      '<button class="delete-link" data-delete="' + book.id + '">이 기록 삭제</button>' +
+    '</div>' +
+  '</div>';
 }
 
 function attachBookEvents() {
@@ -212,7 +310,26 @@ function attachBookEvents() {
       const id = Number(input.dataset.book);
       const field = input.dataset.field;
       const book = books.find(b => b.id === id);
-      if (book) { book[field] = input.value; saveBooks(); renderCounts(); }
+      if (book) {
+        book[field] = input.value;
+        saveBooks();
+        if (field === "title" || field === "author" || field === "line") renderCounts();
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-cover-upload]").forEach(input => {
+    input.addEventListener("click", e => e.stopPropagation());
+    input.addEventListener("change", () => {
+      const id = Number(input.dataset.coverUpload);
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const book = books.find(b => b.id === id);
+        if (book) { book.cover = reader.result; saveBooks(); render(); }
+      };
+      reader.readAsDataURL(file);
     });
   });
 
@@ -249,18 +366,20 @@ function attachBookEvents() {
 
 document.getElementById("addBtn").addEventListener("click", () => {
   const id = Date.now();
-  books.unshift({ id, title: "", status: "읽고 싶은 책", rating: 0, line: "", thoughts: "", cover: "", spine: books.length });
+  books.unshift({ id, title: "", author: "", status: "읽고 싶은 책", rating: 0, line: "", thoughts: "", cover: "", spine: books.length });
   openId = id;
   currentTab = "전체";
   saveBooks();
   render();
 });
 
+applyKrFont(loadKrFont());
+renderFontPicker();
 render();
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
   });
 }
 </script>
