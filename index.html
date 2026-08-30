@@ -12,7 +12,6 @@
 <meta name="color-scheme" content="light" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=EB+Garamond:wght@400;500;600&family=Song+Myung&display=swap" rel="stylesheet">
-<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
 <style>
   * { box-sizing: border-box; }
   :root { --kr-font: 'Song Myung'; }
@@ -157,17 +156,46 @@
 <script>
 const STORAGE_KEY = "forest-shelf-books";
 const TRASH_KEY = "forest-shelf-trash";
+const RATING_SPINE_COLORS = ["#f0e6da", "#eccdb8", "#e3ac8f", "#d88f6b", "#c9724a", "#b0562f"];
+function spineColorFor(book) { return RATING_SPINE_COLORS[book.rating || 0]; }
+const STATUSES = ["읽고 싶은 책", "읽는 중", "읽은 책"];
+const TABS = ["전체", ...STATUSES];
+
+function normalizeBook(b) {
+  return {
+    id: b.id != null ? b.id : Date.now() + Math.random(),
+    seq: b.seq != null ? b.seq : 0,
+    title: b.title || "",
+    author: b.author || "",
+    status: STATUSES.includes(b.status) ? b.status : "읽고 싶은 책",
+    rating: Number.isFinite(b.rating) ? b.rating : 0,
+    line: b.line || "",
+    thoughts: b.thoughts || "",
+    cover: b.cover || "",
+    spine: b.spine || 0
+  };
+}
+
+function normalizeBookSafe(b) {
+  try { return normalizeBook(b); } catch (e) { return b; }
+}
 
 function loadTrash() {
   try {
     const raw = localStorage.getItem(TRASH_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch (e) {}
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.map(normalizeBookSafe);
+    }
+  } catch (e) { console.error("loadTrash failed", e); }
   return [];
 }
 
 let trash = loadTrash();
-function saveTrash() { localStorage.setItem(TRASH_KEY, JSON.stringify(trash)); }
+function saveTrash() {
+  try { localStorage.setItem(TRASH_KEY, JSON.stringify(trash)); }
+  catch (e) { console.error("saveTrash failed", e); alert("저장 공간이 부족해서 휴지통 저장에 실패했어요. 휴지통을 비워보세요."); }
+}
 
 let trashOpen = false;
 let undoTimer = null;
@@ -241,16 +269,14 @@ function renderTrashList() {
     }
   });
 }
-const RATING_SPINE_COLORS = ["#f0e6da", "#eccdb8", "#e3ac8f", "#d88f6b", "#c9724a", "#b0562f"];
-function spineColorFor(book) { return RATING_SPINE_COLORS[book.rating || 0]; }
-const STATUSES = ["읽고 싶은 책", "읽는 중", "읽은 책"];
-const TABS = ["전체", ...STATUSES];
-
 function loadBooks() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch (e) {}
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed.map(normalizeBook);
+    }
+  } catch (e) { console.error("loadBooks failed", e); }
   return [{
     id: 1, seq: 1, title: "숲의 소리를 듣는 시간", author: "", status: "읽은 책", rating: 5,
     line: "고요함이 이렇게 큰 위로가 될 줄이야.",
@@ -269,7 +295,10 @@ let books = loadBooks();
 let currentTab = "전체";
 let openId = null;
 
-function saveBooks() { localStorage.setItem(STORAGE_KEY, JSON.stringify(books)); }
+function saveBooks() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(books)); }
+  catch (e) { console.error("saveBooks failed", e); alert("저장 공간이 부족해서 저장에 실패했어요. 사진 용량이 큰 책이 있다면 줄여보세요."); }
+}
 
 function escapeHtml(str) {
   const div = document.createElement("div");
@@ -292,11 +321,15 @@ function starsHtml(rating, readOnly, bookId) {
 }
 
 function render() {
-  renderCounts();
-  renderTabs();
-  renderBooks();
-  renderTrashLink();
-  renderTrashList();
+  try {
+    renderCounts();
+    renderTabs();
+    renderBooks();
+    renderTrashLink();
+    renderTrashList();
+  } catch (e) {
+    console.error("render failed", e);
+  }
 }
 
 function toggleSelect(id) {
