@@ -28,9 +28,14 @@
   .count-card { flex: 1; background: #fbf9f3; border: 1px solid #d8e0d2; border-radius: 10px; padding: 8px 10px; cursor: pointer; }
   .count-card:active { background: #eef2ea; }
   .count-card.active { border-color: #3f5a45; background: #eef6ea; }
+  .search-bar { margin: 8px 0 4px 0; }
+  .search-bar input { width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px;
+    border: 1px solid #d8e0d2; background: #fff; font-family: 'EB Garamond', var(--kr-font), Georgia, serif;
+    font-size: 13.5px; color: #2f3b2f; outline: none; }
   .count-num { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 18px; color: #2b4030; }
   .count-label { font-size: 10.5px; color: #6b7a67; margin-top: 1px; }
-  .tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tabs-row { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 8px 12px; margin-bottom: 14px; }
   .tab-btn, .status-btn { font-family: 'EB Garamond', var(--kr-font), Georgia, serif; font-size: 12.5px; padding: 7px 12px;
     border-radius: 999px; border: 1px solid #d8e0d2; background: transparent; color: #6b7a67; cursor: pointer; }
   .tab-btn.active, .status-btn.active { border-color: #3f5a45; background: #3f5a45; color: #fff; }
@@ -70,7 +75,7 @@
     border-radius: 8px; border: none; background: #3f5a45; color: #fff; cursor: pointer; }
   .save-status { font-size: 11.5px; color: #8fae86; }
   .empty { text-align: center; color: #6b7a67; font-size: 13px; padding: 30px 0; }
-  .list-actions { display: flex; justify-content: flex-end; margin: -6px 0 10px 0; }
+  .list-actions { display: flex; gap: 5px; flex-shrink: 0; margin-left: auto; }
   .backup-row { display: flex; justify-content: center; gap: 14px; margin: 24px 0 4px 0; }
   .backup-link { font-family: 'EB Garamond', var(--kr-font), Georgia, serif; font-size: 11.5px;
     background: none; border: none; color: #8fae86; text-decoration: underline; cursor: pointer; }
@@ -149,9 +154,15 @@
   </div>
 
   <div class="counts" id="counts"></div>
-  <div class="tabs" id="tabs"></div>
+  <div class="tabs-row">
+    <div class="tabs" id="tabs"></div>
+    <div class="list-actions">
+      <button class="select-toggle" id="searchToggle">검색</button>
+      <button class="select-toggle" id="selectToggle">선택해서 삭제</button>
+    </div>
+  </div>
   <button class="add-btn" id="addBtn">+ 새 책 기록하기</button>
-  <div class="list-actions"><button class="select-toggle" id="selectToggle">선택해서 삭제</button></div>
+  <div id="searchBar"></div>
   <div id="bookList"></div>
   <button class="trash-link" id="trashLink" style="display:none;"></button>
   <div id="trashList"></div>
@@ -212,6 +223,8 @@ let trashOpen = false;
 let undoTimer = null;
 let selectMode = false;
 let selectedIds = new Set();
+let searchOpen = false;
+let searchQuery = "";
 
 function showSavedToast(book) {
   const host = document.getElementById("toastHost");
@@ -334,6 +347,7 @@ function starsHtml(rating, readOnly, bookId) {
 function render() {
   try {
     renderCounts();
+    renderSearchBar();
     renderTabs();
     renderBooks();
     renderTrashLink();
@@ -445,6 +459,14 @@ document.getElementById("importFile").addEventListener("change", (e) => {
   e.target.value = "";
 });
 
+document.getElementById("searchToggle").addEventListener("click", () => {
+  searchOpen = !searchOpen;
+  if (!searchOpen) searchQuery = "";
+  document.getElementById("searchToggle").textContent = searchOpen ? "검색 닫기" : "검색";
+  renderSearchBar();
+  renderBooks();
+});
+
 document.getElementById("selectToggle").addEventListener("click", () => {
   selectMode = !selectMode;
   selectedIds = new Set();
@@ -468,6 +490,26 @@ function renderCounts() {
   });
 }
 
+function renderSearchBar() {
+  const el = document.getElementById("searchBar");
+  if (!searchOpen) { el.innerHTML = ""; return; }
+  el.innerHTML =
+    '<div class="search-bar"><input type="text" id="searchInput" placeholder="책 제목이나 저자로 검색" value="' + escapeHtml(searchQuery) + '" /></div>';
+  const input = document.getElementById("searchInput");
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+  input.addEventListener("input", () => {
+    searchQuery = input.value;
+    renderBooks();
+  });
+}
+
+function matchesSearch(book) {
+  if (!searchQuery.trim()) return true;
+  const q = searchQuery.trim().toLowerCase();
+  return (book.title || "").toLowerCase().includes(q) || (book.author || "").toLowerCase().includes(q);
+}
+
 function renderTabs() {
   const el = document.getElementById("tabs");
   el.innerHTML = TABS.map(t =>
@@ -486,10 +528,10 @@ function renderBooks() {
     return;
   }
 
-  const visible = currentTab === "전체" ? books : books.filter(b => b.status === currentTab);
+  const visible = (currentTab === "전체" ? books : books.filter(b => b.status === currentTab)).filter(matchesSearch);
 
   if (visible.length === 0) {
-    el.innerHTML = '<div class="empty">아직 이 서가에는 책이 없어요.</div>';
+    el.innerHTML = '<div class="empty">' + (searchQuery.trim() ? "검색 결과가 없어요." : "아직 이 서가에는 책이 없어요.") + '</div>';
     renderSelectBar();
     return;
   }
@@ -501,15 +543,23 @@ function renderBooks() {
 
 function renderWishList(el) {
   const wish = books.filter(b => b.status === "읽고 싶은 책");
+  const numbered = wish.map((book, i) => ({ book, num: wish.length - i }));
+  const visible = numbered.filter(({ book }) => matchesSearch(book));
+
   if (wish.length === 0) {
     el.innerHTML = '<div class="empty">읽고 싶은 책이 아직 없어요.</div>';
     renderSelectBar();
     return;
   }
-  el.innerHTML = '<div class="wish-list">' + wish.map((book, i) =>
+  if (visible.length === 0) {
+    el.innerHTML = '<div class="empty">검색 결과가 없어요.</div>';
+    renderSelectBar();
+    return;
+  }
+  el.innerHTML = '<div class="wish-list">' + visible.map(({ book, num }) =>
     '<div class="wish-row" data-wish="' + book.id + '">' +
       (selectMode ? '<input type="checkbox" class="select-check" data-select="' + book.id + '"' + (selectedIds.has(book.id) ? ' checked' : '') + ' />' : '') +
-      '<div class="wish-num">' + (wish.length - i) + '</div>' +
+      '<div class="wish-num">' + num + '</div>' +
       '<div class="spine" style="background:' + spineColorFor(book) + '"></div>' +
       (book.cover ? '<img class="wish-cover" src="' + book.cover + '" alt="" />' : '<div class="wish-cover"></div>') +
       '<div class="row-main">' +
