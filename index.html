@@ -11,7 +11,7 @@
 <meta name="theme-color" content="#3f5a45" />
 <meta name="color-scheme" content="light" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=EB+Garamond:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Song+Myung&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=EB+Garamond:wght@400;500;600&family=Song+Myung&display=swap" rel="stylesheet">
 <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css" />
 <style>
   * { box-sizing: border-box; }
@@ -25,10 +25,6 @@
   .eyebrow { display: block; margin: 0; padding: 0; font-size: 11px; letter-spacing: 2px; color: #3f5a45; text-transform: uppercase; line-height: 1; }
   h1 { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 28px; font-weight: 500; color: #2b4030;
     margin: 4px 0 0 -0.06em; padding: 0; line-height: 1; text-align: left; }
-  .font-picker { display: flex; gap: 6px; margin: 14px 0 4px 0; flex-wrap: wrap; }
-  .font-btn { font-size: 12px; padding: 7px 11px; border-radius: 999px; border: 1px solid #d8e0d2;
-    background: #fff; color: #2f3b2f; cursor: pointer; }
-  .font-btn.active { border-color: #3f5a45; background: #3f5a45; color: #fff; }
   .counts { display: flex; gap: 14px; margin: 16px 0 18px 0; }
   .count-card { flex: 1; background: #fbf9f3; border: 1px solid #d8e0d2; border-radius: 10px; padding: 8px 10px; }
   .count-num { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 18px; color: #2b4030; }
@@ -88,8 +84,6 @@
     </div>
   </div>
 
-  <div class="font-picker" id="fontPicker"></div>
-
   <div class="counts" id="counts"></div>
   <div class="tabs" id="tabs"></div>
   <button class="add-btn" id="addBtn">+ 새 책 기록하기</button>
@@ -98,37 +92,6 @@
 
 <script>
 const STORAGE_KEY = "forest-shelf-books";
-const FONT_STORAGE_KEY = "forest-shelf-kr-font";
-const KR_FONTS = [
-  { key: "pretendard", label: "프리텐다드", family: "'Pretendard'" },
-  { key: "notosans", label: "노토 산스", family: "'Noto Sans KR'" },
-  { key: "plex", label: "IBM 플렉스", family: "'IBM Plex Sans KR'" },
-  { key: "song", label: "손글씨 감성", family: "'Song Myung'" },
-];
-
-function loadKrFont() {
-  return localStorage.getItem(FONT_STORAGE_KEY) || "song";
-}
-
-function applyKrFont(key) {
-  const found = KR_FONTS.find(f => f.key === key) || KR_FONTS[0];
-  document.documentElement.style.setProperty("--kr-font", found.family);
-  localStorage.setItem(FONT_STORAGE_KEY, found.key);
-}
-
-function renderFontPicker() {
-  const current = loadKrFont();
-  const el = document.getElementById("fontPicker");
-  el.innerHTML = KR_FONTS.map(f =>
-    '<button class="font-btn' + (f.key === current ? ' active' : '') + '" data-font="' + f.key + '">' + f.label + '</button>'
-  ).join("");
-  el.querySelectorAll(".font-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      applyKrFont(btn.dataset.font);
-      renderFontPicker();
-    });
-  });
-}
 const SPINE_COLORS = ["#8fae86", "#c9b26a", "#b98a72", "#7c9a99", "#a68bb0", "#c9a15a"];
 const STATUSES = ["읽고 싶은 책", "읽는 중", "읽은 책"];
 const TABS = ["전체", ...STATUSES];
@@ -373,8 +336,6 @@ document.getElementById("addBtn").addEventListener("click", () => {
   render();
 });
 
-applyKrFont(loadKrFont());
-renderFontPicker();
 render();
 
 if ("serviceWorker" in navigator) {
