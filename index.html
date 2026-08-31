@@ -63,7 +63,7 @@
   .field input, .field textarea { width: 100%; box-sizing: border-box; padding: 9px 11px; border-radius: 8px;
     border: 1px solid #d8e0d2; background: #fff; font-family: 'EB Garamond', var(--kr-font), Georgia, serif;
     font-size: 13.5px; color: #2f3b2f; outline: none; }
-  .field textarea { min-height: 64px; resize: vertical; }
+  .field textarea { min-height: 64px; resize: none; overflow: hidden; }
   .cover-input-row { display: flex; gap: 6px; align-items: center; }
   .cover-input-row input[type=text] { flex: 1; }
   .upload-btn { font-size: 12px; padding: 9px 10px; border-radius: 8px; border: 1px solid #d8e0d2;
@@ -657,6 +657,11 @@ function bookCardHtml(book, index, total) {
   '</div>';
 }
 
+function autoGrowTextarea(el) {
+  el.style.height = "auto";
+  el.style.height = el.scrollHeight + "px";
+}
+
 function attachBookEvents() {
   document.querySelectorAll("[data-toggle]").forEach(row => {
     row.addEventListener("click", (e) => {
@@ -678,6 +683,7 @@ function attachBookEvents() {
 
   document.querySelectorAll("input[data-field], textarea[data-field]").forEach(input => {
     input.addEventListener("click", e => e.stopPropagation());
+    if (input.tagName === "TEXTAREA") autoGrowTextarea(input);
     input.addEventListener("input", () => {
       const id = Number(input.dataset.book);
       const field = input.dataset.field;
@@ -687,6 +693,7 @@ function attachBookEvents() {
         const statusEl = document.getElementById("save-status-" + id);
         if (statusEl) statusEl.textContent = "저장 안 된 변경사항 있음";
       }
+      if (input.tagName === "TEXTAREA") autoGrowTextarea(input);
     });
   });
 
