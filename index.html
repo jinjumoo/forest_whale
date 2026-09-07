@@ -71,9 +71,10 @@
   .rating-month-box { flex: 1; min-width: 0; background: #f4f8f1; border: 1px solid #e3ecdd; border-radius: 10px;
     padding: 6px 10px; display: flex; flex-direction: column; gap: 3px; }
   .rating-month-box .field-label { margin-bottom: 0; }
-  .month-pill { width: 100%; max-width: 100%; box-sizing: border-box; padding: 3px 6px; border-radius: 999px;
+  .month-select-group { display: flex; gap: 4px; }
+  .month-pill { flex: 1; min-width: 0; box-sizing: border-box; padding: 3px 2px; border-radius: 999px;
     border: 1px solid #d8e0d2; background: #fff; font-family: 'EB Garamond', var(--kr-font), Georgia, serif;
-    font-size: 11px; color: #2f3b2f; outline: none; }
+    font-size: 11px; color: #2f3b2f; outline: none; text-align: center; }
   .cover-input-row { display: flex; gap: 6px; align-items: center; }
   .cover-input-row input[type=text] { flex: 1; }
   .upload-btn { font-size: 12px; padding: 9px 10px; border-radius: 8px; border: 1px solid #d8e0d2;
@@ -637,6 +638,24 @@ function renderWishList(el) {
   renderSelectBar();
 }
 
+function buildMonthSelects(book) {
+  const [selY, selM] = (book.readMonth || "").split("-");
+  const curYear = new Date().getFullYear();
+  let yearOpts = '<option value="">연도</option>';
+  for (let y = curYear + 1; y >= curYear - 12; y--) {
+    yearOpts += '<option value="' + y + '"' + (String(y) === selY ? ' selected' : '') + '>' + y + '</option>';
+  }
+  let monthOpts = '<option value="">월</option>';
+  for (let m = 1; m <= 12; m++) {
+    const mm = String(m).padStart(2, "0");
+    monthOpts += '<option value="' + mm + '"' + (mm === selM ? ' selected' : '') + '>' + m + '월</option>';
+  }
+  return '<div class="month-select-group">' +
+    '<select class="month-pill" data-read-year="' + book.id + '">' + yearOpts + '</select>' +
+    '<select class="month-pill" data-read-month-part="' + book.id + '">' + monthOpts + '</select>' +
+  '</div>';
+}
+
 function formatReadMonth(v) {
   if (!v) return "";
   const [y, m] = v.split("-");
@@ -698,7 +717,7 @@ function bookCardHtml(book, index, total) {
         '</div>' +
         '<div class="rating-month-box">' +
           '<div class="field-label">읽은 시기</div>' +
-          '<input type="month" class="month-pill" data-field="readMonth" data-book="' + book.id + '" value="' + escapeHtml(book.readMonth || "") + '" />' +
+          buildMonthSelects(book) +
         '</div>' +
       '</div>' +
       '<div class="field"><div class="field-label">한줄 기록</div>' +
@@ -766,6 +785,23 @@ function attachBookEvents() {
       currentTab = "전체";
       render();
       if (book) showSavedToast(book);
+    });
+  });
+
+  document.querySelectorAll("[data-read-year], [data-read-month-part]").forEach(sel => {
+    sel.addEventListener("click", e => e.stopPropagation());
+    sel.addEventListener("change", () => {
+      const id = Number(sel.dataset.readYear || sel.dataset.readMonthPart);
+      const book = books.find(b => b.id === id);
+      if (!book) return;
+      const card = sel.closest(".book-card");
+      const yearSel = card.querySelector("[data-read-year]");
+      const monthSel = card.querySelector("[data-read-month-part]");
+      const y = yearSel.value;
+      const m = monthSel.value;
+      book.readMonth = (y && m) ? (y + "-" + m) : "";
+      const statusEl = document.getElementById("save-status-" + id);
+      if (statusEl) statusEl.textContent = "저장 안 된 변경사항 있음";
     });
   });
 
