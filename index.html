@@ -54,6 +54,9 @@
   .chevron { color: #6b7a67; font-size: 12px; transition: transform 0.15s; }
   .chevron.open { transform: rotate(90deg); }
   .stars span { font-size: 17px; cursor: pointer; color: #d8e0d2; line-height: 1; user-select: none; }
+  .rating-col { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+  .row-month-tag { font-family: 'EB Garamond', var(--kr-font), Georgia, serif; font-size: 10.5px;
+    font-weight: 600; padding: 3px 8px 3px 7px; border-radius: 3px; border-left: 3px solid; white-space: nowrap; }
   .stars span.filled { color: #c98a72; }
   .stars.small span { font-size: 12px; cursor: default; }
   .detail { padding: 4px 16px 18px 16px; border-top: 1px solid #d8e0d2; display: none; }
@@ -64,6 +67,13 @@
     border: 1px solid #d8e0d2; background: #fff; font-family: 'EB Garamond', var(--kr-font), Georgia, serif;
     font-size: 13.5px; color: #2f3b2f; outline: none; }
   .field textarea { min-height: 64px; resize: none; overflow: hidden; }
+  .rating-month-row { display: flex; gap: 10px; }
+  .rating-month-box { flex: 1; background: #f4f8f1; border: 1px solid #e3ecdd; border-radius: 10px;
+    padding: 6px 10px; display: flex; flex-direction: column; gap: 3px; }
+  .rating-month-box .field-label { margin-bottom: 0; }
+  .month-pill { width: 100%; box-sizing: border-box; padding: 3px 8px; border-radius: 999px;
+    border: 1px solid #d8e0d2; background: #fff; font-family: 'EB Garamond', var(--kr-font), Georgia, serif;
+    font-size: 12px; color: #2f3b2f; outline: none; }
   .cover-input-row { display: flex; gap: 6px; align-items: center; }
   .cover-input-row input[type=text] { flex: 1; }
   .upload-btn { font-size: 12px; padding: 9px 10px; border-radius: 8px; border: 1px solid #d8e0d2;
@@ -197,6 +207,7 @@ function normalizeBook(b) {
     line: b.line || "",
     thoughts: b.thoughts || "",
     quote: b.quote || "",
+    readMonth: b.readMonth || "",
     cover: b.cover || "",
     spine: b.spine || 0
   };
@@ -498,7 +509,7 @@ function renderSearchBar() {
   const el = document.getElementById("searchBar");
   if (!searchOpen) { el.innerHTML = ""; return; }
   el.innerHTML =
-    '<div class="search-bar"><input type="text" id="searchInput" placeholder="책 제목이나 저자로 검색" value="' + escapeHtml(searchQuery) + '" /></div>';
+    '<div class="search-bar"><input type="text" id="searchInput" placeholder="제목, 저자, 읽은 시기로 검색" value="' + escapeHtml(searchQuery) + '" /></div>';
   const input = document.getElementById("searchInput");
   input.focus();
   input.setSelectionRange(input.value.length, input.value.length);
@@ -511,7 +522,11 @@ function renderSearchBar() {
 function matchesSearch(book) {
   if (!searchQuery.trim()) return true;
   const q = searchQuery.trim().toLowerCase();
-  return (book.title || "").toLowerCase().includes(q) || (book.author || "").toLowerCase().includes(q);
+  const monthText = formatReadMonth(book.readMonth).toLowerCase();
+  return (book.title || "").toLowerCase().includes(q) ||
+    (book.author || "").toLowerCase().includes(q) ||
+    (book.readMonth || "").toLowerCase().includes(q) ||
+    monthText.includes(q);
 }
 
 function renderTabs() {
@@ -540,9 +555,30 @@ function renderBooks() {
     return;
   }
 
-  el.innerHTML = visible.map((book, i) => bookCardHtml(book, i, visible.length)).join("");
+  el.innerHTML = renderBooksHtml(visible);
   attachBookEvents();
   renderSelectBar();
+}
+
+const MONTH_TAG_PALETTE = [
+  { bg: "#e3ecdd", fg: "#4f6b47" },  // sage
+  { bg: "#f0ddd3", fg: "#a85f3f" },  // rose/terracotta
+  { bg: "#e8e1f0", fg: "#6f5a94" },  // lavender
+  { bg: "#f3e6c9", fg: "#9c7a2c" },  // sand/gold
+  { bg: "#dbe8ec", fg: "#3f7288" },  // muted blue
+  { bg: "#f0dde4", fg: "#a5537a" },  // dusty pink
+];
+
+function monthTagStyle(key) {
+  if (!key) return { bg: "#e9e9e9", fg: "#8a8a8a" };
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return MONTH_TAG_PALETTE[hash % MONTH_TAG_PALETTE.length];
+}
+
+function renderBooksHtml(visible) {
+  const withNum = visible.map((book, i) => ({ book, num: visible.length - i }));
+  return withNum.map(({ book, num }) => bookCardHtml(book, num - 1, visible.length)).join("");
 }
 
 function renderWishList(el) {
@@ -601,13 +637,27 @@ function renderWishList(el) {
   renderSelectBar();
 }
 
+function formatReadMonth(v) {
+  if (!v) return "";
+  const [y, m] = v.split("-");
+  if (!y || !m) return "";
+  return y + "년 " + Number(m) + "월";
+}
+
 function bookCardHtml(book, index, total) {
   const spineColor = spineColorFor(book);
   const isOpen = openId === book.id;
   const coverImg = book.cover ? '<img class="cover-thumb" src="' + book.cover + '" alt="" />' : '<div class="cover-thumb"></div>';
+  const readMonthText = formatReadMonth(book.readMonth);
   const authorLine = book.author ? '<div class="book-author">' + escapeHtml(book.author) + '</div>' : "";
   const lineHtml = book.line ? '<div class="book-line">' + escapeHtml(book.line) + '</div>' : "";
   const ratingBadge = book.rating > 0 ? starsHtml(book.rating, true) : "";
+  const monthTag = readMonthText
+    ? '<div class="row-month-tag" style="border-left-color:' + monthTagStyle(book.readMonth).fg + ';background:' + monthTagStyle(book.readMonth).bg + '77;color:' + monthTagStyle(book.readMonth).fg + ';">' + readMonthText + '</div>'
+    : "";
+  const ratingCol = (ratingBadge || monthTag)
+    ? '<div class="rating-col">' + monthTag + ratingBadge + '</div>'
+    : "";
   const num = (index != null && total != null) ? (total - index) : null;
 
   return '<div class="book-card">' +
@@ -621,7 +671,7 @@ function bookCardHtml(book, index, total) {
         authorLine +
         lineHtml +
       '</div>' +
-      ratingBadge +
+      ratingCol +
       '<span class="chevron' + (isOpen ? ' open' : '') + '">›</span>' +
     '</div>' +
     '<div class="detail' + (isOpen && !selectMode ? ' open' : '') + '">' +
@@ -641,7 +691,16 @@ function bookCardHtml(book, index, total) {
           '<button class="status-btn' + (book.status === s ? ' active' : '') + '" data-book="' + book.id + '" data-status="' + s + '">' + s + '</button>'
         ).join("") +
       '</div></div>' +
-      '<div class="field"><div class="field-label">평점</div>' + starsHtml(book.rating, false, book.id) + '</div>' +
+      '<div class="field rating-month-row">' +
+        '<div class="rating-month-box">' +
+          '<div class="field-label">별점</div>' +
+          starsHtml(book.rating, false, book.id) +
+        '</div>' +
+        '<div class="rating-month-box">' +
+          '<div class="field-label">읽은 시기</div>' +
+          '<input type="month" class="month-pill" data-field="readMonth" data-book="' + book.id + '" value="' + escapeHtml(book.readMonth || "") + '" />' +
+        '</div>' +
+      '</div>' +
       '<div class="field"><div class="field-label">한줄 기록</div>' +
         '<input type="text" data-field="line" data-book="' + book.id + '" value="' + escapeHtml(book.line) + '" placeholder="이 책을 한 문장으로 표현하면" /></div>' +
       '<div class="field"><div class="field-label">생각의 여백</div>' +
@@ -784,7 +843,7 @@ document.getElementById("trashLink").addEventListener("click", () => {
 
 document.getElementById("addBtn").addEventListener("click", () => {
   const id = Date.now();
-  books.unshift({ id, seq: nextSeq(), title: "", author: "", status: "읽고 싶은 책", rating: 0, line: "", thoughts: "", quote: "", cover: "", spine: books.length });
+  books.unshift({ id, seq: nextSeq(), title: "", author: "", status: "읽고 싶은 책", rating: 0, line: "", thoughts: "", quote: "", readMonth: "", cover: "", spine: books.length });
   openId = id;
   currentTab = "전체";
   saveBooks();
