@@ -703,8 +703,7 @@ function monthTagStyle(key) {
 }
 
 function renderBooksHtml(visible) {
-  const withNum = visible.map((book, i) => ({ book, num: visible.length - i }));
-  return withNum.map(({ book, num }) => bookCardHtml(book, num - 1, visible.length)).join("");
+  return visible.map((book, i) => bookCardHtml(book, i, visible.length)).join("");
 }
 
 function renderWishList(el) {
