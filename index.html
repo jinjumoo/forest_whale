@@ -210,6 +210,7 @@
     <div id="authError" class="login-error"></div>
     <button id="loginBtn" class="login-btn login-btn-primary">로그인</button>
     <button id="signupBtn" class="login-btn login-btn-secondary">처음이에요, 계정 만들기</button>
+    <button id="forgotPasswordBtn" class="logout-link" style="margin-top:14px;">비밀번호를 잊으셨나요?</button>
   </div>
 </div>
 
@@ -243,6 +244,7 @@
   <div class="footer-signature">made by J., 2026. 8. 30.</div>
   <div class="sync-status" id="syncStatus"></div>
   <button class="logout-link" id="logoutBtn">로그아웃</button>
+  <button class="logout-link" id="changePasswordBtn">비밀번호 변경</button>
 </div>
 <div id="toastHost"></div>
 
@@ -1020,6 +1022,8 @@ function authErrorMessage(code) {
     "auth/invalid-credential": "이메일 또는 비밀번호가 틀렸어요.",
     "auth/email-already-in-use": "이미 가입된 이메일이에요.",
     "auth/weak-password": "비밀번호는 6자 이상이어야 해요.",
+    "auth/requires-recent-login": "보안을 위해 다시 로그인해주세요.",
+    "auth/too-many-requests": "시도가 너무 많았어요. 잠시 후 다시 시도해주세요.",
   };
   return map[code] || "문제가 생겼어요. 다시 시도해주세요.";
 }
@@ -1046,6 +1050,39 @@ document.getElementById("signupBtn").addEventListener("click", () => {
 
 document.getElementById("logoutBtn").addEventListener("click", () => {
   if (confirm("로그아웃할까요?")) auth.signOut();
+});
+
+document.getElementById("forgotPasswordBtn").addEventListener("click", () => {
+  if (!firebaseReady) return;
+  const typed = document.getElementById("authEmail").value.trim();
+  const email = typed || prompt("비밀번호를 재설정할 이메일을 입력해주세요:");
+  if (!email) return;
+  auth.sendPasswordResetEmail(email)
+    .then(() => alert("비밀번호 재설정 링크를 이메일로 보냈어요. 메일함을 확인해주세요."))
+    .catch(e => alert(authErrorMessage(e.code)));
+});
+
+document.getElementById("changePasswordBtn").addEventListener("click", () => {
+  if (!firebaseReady || !auth.currentUser) return;
+  const newPw = prompt("새 비밀번호를 입력해주세요 (6자 이상):");
+  if (!newPw) return;
+  if (newPw.length < 6) { alert("비밀번호는 6자 이상이어야 해요."); return; }
+  const user = auth.currentUser;
+  user.updatePassword(newPw)
+    .then(() => alert("비밀번호가 변경됐어요!"))
+    .catch(e => {
+      if (e.code === "auth/requires-recent-login") {
+        const currentPw = prompt("보안을 위해 현재 비밀번호를 다시 입력해주세요:");
+        if (!currentPw) return;
+        const cred = firebase.auth.EmailAuthProvider.credential(user.email, currentPw);
+        user.reauthenticateWithCredential(cred)
+          .then(() => user.updatePassword(newPw))
+          .then(() => alert("비밀번호가 변경됐어요!"))
+          .catch(e2 => alert(authErrorMessage(e2.code)));
+      } else {
+        alert(authErrorMessage(e.code));
+      }
+    });
 });
 
 if ("serviceWorker" in navigator) {
