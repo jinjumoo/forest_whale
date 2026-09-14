@@ -87,7 +87,11 @@
     border-radius: 8px; border: none; background: #3f5a45; color: #fff; cursor: pointer; }
   .save-status { font-size: 11.5px; color: #8fae86; }
   .empty { text-align: center; color: #6b7a67; font-size: 13px; padding: 30px 0; }
-  #bookList { touch-action: pan-y; -webkit-user-select: none; user-select: none; }
+  #bookList { -webkit-user-select: none; user-select: none; }
+  .swipe-container { display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+  .swipe-container::-webkit-scrollbar { display: none; }
+  .swipe-panel { flex: 0 0 100%; min-width: 100%; scroll-snap-align: start; box-sizing: border-box; padding-right: 16px; }
 
   .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
   .login-box { width: 100%; max-width: 320px; display: flex; flex-direction: column; align-items: center; text-align: center; }
@@ -121,11 +125,17 @@
   .stamp-total { text-align: center; margin-bottom: 24px; }
   .stamp-total-num { font-family: 'Playfair Display', var(--kr-font), Georgia, serif; font-size: 34px; color: #2b4030; }
   .stamp-total-label { font-size: 12px; color: #6b7a67; }
-  .view-mode-toggle { display: flex; margin: 0 0 16px 0; background: #e5ece2; border-radius: 10px; padding: 3px; }
-  .view-mode-btn { flex: 1; font-family: 'EB Garamond', var(--kr-font), Georgia, serif; font-size: 12.5px;
-    padding: 7px 0; border-radius: 8px; border: none; background: transparent; color: #6b7a67; cursor: pointer;
-    transition: background 0.15s, color 0.15s; }
-  .view-mode-btn.active { background: #fbf9f3; color: #2b4030; font-weight: 600; box-shadow: 0 1px 3px rgba(43,64,48,0.15); }
+  .view-mode-toggle { display: flex; position: relative; margin: 0 0 16px 0; background: #e5ece2; border-radius: 10px; padding: 3px; }
+  .view-mode-indicator { position: absolute; top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px);
+    background: #fbf9f3; border-radius: 8px; box-shadow: 0 1px 3px rgba(43,64,48,0.15); will-change: transform; }
+  .view-mode-btn { flex: 1; position: relative; z-index: 1; pointer-events: none; font-family: 'EB Garamond', var(--kr-font), Georgia, serif; font-size: 12.5px;
+    padding: 7px 0; border-radius: 8px; border: none; background: transparent; color: #6b7a67; cursor: pointer; }
+  .view-mode-btn.active { color: #2b4030; font-weight: 600; }
+  .view-mode-scroll-overlay { position: absolute; inset: 0; z-index: 2; display: flex;
+    overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; opacity: 0.001; }
+  .view-mode-scroll-overlay::-webkit-scrollbar { display: none; }
+  .view-mode-slot { flex: 0 0 100%; scroll-snap-align: start; }
   .footer-signature { text-align: center; font-family: 'EB Garamond', var(--kr-font), Georgia, serif;
     font-size: 11px; font-style: italic; color: #a9baa4; margin: 28px 0 4px 0; letter-spacing: 0.3px; }
   .select-toggle { font-family: 'EB Garamond', var(--kr-font), Georgia, serif; font-size: 13.5px;
@@ -523,19 +533,78 @@ function render() {
   }
 }
 
+let toggleSyncLock = false;
+
+function goToViewMode(mode) {
+  viewMode = mode;
+  const container = document.getElementById("swipeContainer");
+  if (container) {
+    const idx = viewMode === "목록" ? 0 : 1;
+    container.scrollTo({ left: idx * container.clientWidth, behavior: "smooth" });
+    renderViewModeToggle();
+  } else {
+    render();
+  }
+}
+
 function renderViewModeToggle() {
   const el = document.getElementById("viewModeToggle");
   if (currentTab !== "전체") { el.innerHTML = ""; return; }
   el.innerHTML =
-    '<div class="view-mode-toggle">' +
+    '<div class="view-mode-toggle" id="viewModeToggleBar">' +
+      '<div class="view-mode-indicator" id="viewModeIndicator"></div>' +
       '<button class="view-mode-btn' + (viewMode === "스탬프" ? " active" : "") + '" data-view="스탬프">스탬프</button>' +
       '<button class="view-mode-btn' + (viewMode === "목록" ? " active" : "") + '" data-view="목록">목록</button>' +
+      '<div class="view-mode-scroll-overlay" id="viewModeScrollOverlay">' +
+        '<div class="view-mode-slot" data-view="목록"></div>' +
+        '<div class="view-mode-slot" data-view="스탬프"></div>' +
+      '</div>' +
     '</div>';
-  el.querySelectorAll(".view-mode-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      viewMode = btn.dataset.view;
-      render();
+
+  const indicator = document.getElementById("viewModeIndicator");
+  indicator.style.transform = "translateX(" + (viewMode === "목록" ? "100%" : "0%") + ")";
+
+  const overlay = document.getElementById("viewModeScrollOverlay");
+  overlay.scrollLeft = (viewMode === "목록" ? 0 : 1) * overlay.clientWidth;
+
+  let overlaySyncing = false;
+  overlay.addEventListener("scroll", () => {
+    if (toggleSyncLock) return;
+    const maxScroll = overlay.scrollWidth - overlay.clientWidth;
+    const progress = maxScroll > 0 ? Math.min(1, Math.max(0, overlay.scrollLeft / maxScroll)) : 0;
+    indicator.style.transform = "translateX(" + ((1 - progress) * 100) + "%)";
+    document.querySelectorAll(".view-mode-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.view === (progress < 0.5 ? "목록" : "스탬프"));
     });
+
+    const container = document.getElementById("swipeContainer");
+    if (container) {
+      toggleSyncLock = true;
+      container.scrollLeft = progress * (container.scrollWidth - container.clientWidth);
+      toggleSyncLock = false;
+    }
+
+    clearTimeout(overlay._settleTimer);
+    overlay._settleTimer = setTimeout(() => {
+      const idx = Math.round(overlay.scrollLeft / overlay.clientWidth);
+      viewMode = idx === 0 ? "목록" : "스탬프";
+    }, 80);
+  });
+
+  let downX = 0, downY = 0, dragged = false;
+  overlay.addEventListener("pointerdown", (e) => { downX = e.clientX; downY = e.clientY; dragged = false; });
+  overlay.addEventListener("pointermove", (e) => {
+    if (Math.abs(e.clientX - downX) > 8 || Math.abs(e.clientY - downY) > 8) dragged = true;
+  });
+  overlay.querySelectorAll(".view-mode-slot").forEach(slot => {
+    slot.addEventListener("click", () => {
+      if (dragged) return;
+      goToViewMode(slot.dataset.view);
+    });
+  });
+
+  document.querySelectorAll(".view-mode-btn").forEach(btn => {
+    btn.style.pointerEvents = "none";
   });
 }
 
@@ -715,12 +784,12 @@ function renderBooks() {
     return;
   }
 
-  if (currentTab === "전체" && viewMode === "스탬프") {
-    renderStampPage(el);
+  if (currentTab === "전체") {
+    renderAllTabSwipeable(el);
     return;
   }
 
-  const visible = (currentTab === "전체" ? books : books.filter(b => b.status === currentTab)).filter(matchesSearch);
+  const visible = books.filter(b => b.status === currentTab).filter(matchesSearch);
 
   if (visible.length === 0) {
     el.innerHTML = '<div class="empty">' + (searchQuery.trim() ? "검색 결과가 없어요." : "아직 이 서가에는 책이 없어요.") + '</div>';
@@ -731,6 +800,59 @@ function renderBooks() {
   el.innerHTML = renderBooksHtml(visible);
   attachBookEvents();
   renderSelectBar();
+}
+
+function renderAllTabSwipeable(el) {
+  const visible = books.filter(matchesSearch);
+  const listHtml = visible.length === 0
+    ? '<div class="empty">' + (searchQuery.trim() ? "검색 결과가 없어요." : "아직 이 서가에는 책이 없어요.") + '</div>'
+    : renderBooksHtml(visible);
+  const stampHtml = buildStampHtml();
+
+  el.innerHTML =
+    '<div class="swipe-container" id="swipeContainer">' +
+      '<div class="swipe-panel" id="panelList">' + listHtml + '</div>' +
+      '<div class="swipe-panel" id="panelStamp">' + stampHtml + '</div>' +
+    '</div>';
+
+  attachBookEvents();
+  renderSelectBar();
+
+  const container = document.getElementById("swipeContainer");
+  const targetIndex = viewMode === "목록" ? 0 : 1;
+  container.scrollLeft = targetIndex * container.clientWidth;
+  const initMax = container.scrollWidth - container.clientWidth;
+  const initProgress = initMax > 0 ? Math.min(1, Math.max(0, container.scrollLeft / initMax)) : 0;
+  const initIndicator = document.getElementById("viewModeIndicator");
+  if (initIndicator) initIndicator.style.transform = "translateX(" + ((1 - initProgress) * 100) + "%)";
+
+  let scrollTimer;
+  container.addEventListener("scroll", () => {
+    if (toggleSyncLock) return;
+    const maxScroll = container.scrollWidth - container.clientWidth;
+    const progress = maxScroll > 0 ? Math.min(1, Math.max(0, container.scrollLeft / maxScroll)) : 0;
+    const indicator = document.getElementById("viewModeIndicator");
+    if (indicator) indicator.style.transform = "translateX(" + ((1 - progress) * 100) + "%)";
+
+    const closerMode = progress < 0.5 ? "목록" : "스탬프";
+    document.querySelectorAll(".view-mode-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.view === closerMode);
+    });
+
+    const overlay = document.getElementById("viewModeScrollOverlay");
+    if (overlay) {
+      toggleSyncLock = true;
+      overlay.scrollLeft = progress * (overlay.scrollWidth - overlay.clientWidth);
+      toggleSyncLock = false;
+    }
+
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(() => {
+      const idx = Math.round(container.scrollLeft / container.clientWidth);
+      const newMode = idx === 0 ? "목록" : "스탬프";
+      if (newMode !== viewMode) viewMode = newMode;
+    }, 80);
+  });
 }
 
 const MONTH_TAG_PALETTE = [
@@ -753,12 +875,11 @@ function renderBooksHtml(visible) {
   return visible.map((book, i) => bookCardHtml(book, i, visible.length)).join("");
 }
 
-function renderStampPage(el) {
+function buildStampHtml() {
   const stamped = books.filter(b => b.status === "읽은 책" && b.readMonth);
 
   if (stamped.length === 0) {
-    el.innerHTML = '<div class="empty">아직 읽은 시기를 기록한 책이 없어요.<br>책 상세화면에서 "읽은 시기"를 입력해보세요.</div>';
-    return;
+    return '<div class="empty">아직 읽은 시기를 기록한 책이 없어요.<br>책 상세화면에서 "읽은 시기"를 입력해보세요.</div>';
   }
 
   const groups = new Map();
@@ -786,7 +907,7 @@ function renderStampPage(el) {
     '</div>';
   }).join("");
 
-  el.innerHTML = totalHtml + groupsHtml;
+  return totalHtml + groupsHtml;
 }
 
 function renderWishList(el) {
@@ -1096,34 +1217,6 @@ document.getElementById("addBtn").addEventListener("click", () => {
 });
 
 render();
-
-(function setupSwipe() {
-  const el = document.getElementById("bookList");
-  let startX = 0, startY = 0, tracking = false, handled = false;
-
-  function reset() { tracking = false; handled = false; }
-
-  el.addEventListener("touchstart", (e) => {
-    if (currentTab !== "전체" || e.touches.length !== 1) { reset(); return; }
-    tracking = true;
-    handled = false;
-    startX = e.touches[0].clientX;
-    startY = e.touches[0].clientY;
-  }, { passive: true });
-
-  el.addEventListener("touchmove", (e) => {
-    if (!tracking || handled || e.touches.length !== 1) return;
-    const dx = e.touches[0].clientX - startX;
-    const dy = e.touches[0].clientY - startY;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
-    handled = true;
-    if (dx < 0 && viewMode === "스탬프") { viewMode = "목록"; render(); }
-    else if (dx > 0 && viewMode === "목록") { viewMode = "스탬프"; render(); }
-  }, { passive: true });
-
-  el.addEventListener("touchend", reset, { passive: true });
-  el.addEventListener("touchcancel", reset, { passive: true });
-})();
 
 function authErrorMessage(code) {
   const map = {
