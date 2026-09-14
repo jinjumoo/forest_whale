@@ -89,9 +89,9 @@
   .empty { text-align: center; color: #6b7a67; font-size: 13px; padding: 30px 0; }
   #bookList { -webkit-user-select: none; user-select: none; }
   .swipe-container { display: flex; overflow-x: auto; scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+    -webkit-overflow-scrolling: touch; scrollbar-width: none; }
   .swipe-container::-webkit-scrollbar { display: none; }
-  .swipe-panel { flex: 0 0 100%; min-width: 100%; scroll-snap-align: start; box-sizing: border-box; padding-right: 16px; }
+  .swipe-panel { flex: 0 0 100%; width: 100%; min-width: 0; scroll-snap-align: start; box-sizing: border-box; }
 
   .login-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
   .login-box { width: 100%; max-width: 320px; display: flex; flex-direction: column; align-items: center; text-align: center; }
@@ -538,13 +538,20 @@ let toggleSyncLock = false;
 function goToViewMode(mode) {
   viewMode = mode;
   const container = document.getElementById("swipeContainer");
-  if (container) {
-    const idx = viewMode === "목록" ? 0 : 1;
-    container.scrollTo({ left: idx * container.clientWidth, behavior: "smooth" });
-    renderViewModeToggle();
-  } else {
-    render();
-  }
+  const overlay = document.getElementById("viewModeScrollOverlay");
+  const indicator = document.getElementById("viewModeIndicator");
+  const idx = mode === "목록" ? 0 : 1;
+
+  if (!container) { render(); return; }
+
+  toggleSyncLock = true;
+  container.scrollTo({ left: idx * container.clientWidth, behavior: "smooth" });
+  if (overlay) overlay.scrollLeft = idx * overlay.clientWidth;
+  if (indicator) indicator.style.transform = "translateX(" + (mode === "목록" ? "100%" : "0%") + ")";
+  document.querySelectorAll(".view-mode-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.view === mode);
+  });
+  setTimeout(() => { toggleSyncLock = false; }, 400);
 }
 
 function renderViewModeToggle() {
