@@ -1243,11 +1243,21 @@ render();
 document.getElementById("googleLoginBtn").addEventListener("click", () => {
   const errEl = document.getElementById("authError");
   errEl.textContent = "";
-  if (!firebaseReady) { errEl.textContent = "로그인 서비스에 연결할 수 없어요."; return; }
-  auth.signInWithRedirect(googleProvider).catch(e => {
+  if (!firebaseReady) { errEl.textContent = "로그인 서비스에 연결할 수 없어요. (firebaseReady=false)"; return; }
+  try {
+    auth.signInWithRedirect(googleProvider).catch(e => {
+      console.error(e);
+      errEl.textContent = "로그인 실패: " + (e && (e.code || e.message) || String(e));
+    });
+  } catch (e) {
     console.error(e);
-    errEl.textContent = "로그인에 실패했어요. 다시 시도해주세요.";
-  });
+    errEl.textContent = "로그인 오류(동기): " + (e && e.message ? e.message : String(e));
+  }
+});
+
+window.addEventListener("error", (ev) => {
+  const errEl = document.getElementById("authError");
+  if (errEl) errEl.textContent = "스크립트 오류: " + ev.message;
 });
 
 document.getElementById("logoutBtn").addEventListener("click", () => {
