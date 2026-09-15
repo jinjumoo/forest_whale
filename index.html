@@ -968,7 +968,7 @@ function renderWishList(el) {
       (selectMode ? '<input type="checkbox" class="select-check" data-select="' + book.id + '"' + (selectedIds.has(book.id) ? ' checked' : '') + ' />' : '') +
       '<div class="wish-num">' + num + '</div>' +
       '<div class="spine" style="background:' + spineColorFor(book) + '"></div>' +
-      (book.cover ? '<img class="wish-cover" src="' + book.cover + '" alt="" />' : '<div class="wish-cover"></div>') +
+      (book.cover ? '<img class="wish-cover" src="' + escapeHtml(book.cover) + '" alt="" />' : '<div class="wish-cover"></div>') +
       '<div class="row-main">' +
         '<div class="wish-title">' + (escapeHtml(book.title) || "제목 없는 책") + '</div>' +
         (book.author ? '<div class="wish-author">' + escapeHtml(book.author) + '</div>' : '') +
@@ -1034,7 +1034,7 @@ function formatReadMonth(v) {
 function bookCardHtml(book, index, total, globalNum) {
   const spineColor = spineColorFor(book);
   const isOpen = openId === book.id;
-  const coverImg = book.cover ? '<img class="cover-thumb" src="' + book.cover + '" alt="" />' : '<div class="cover-thumb"></div>';
+  const coverImg = book.cover ? '<img class="cover-thumb" src="' + escapeHtml(book.cover) + '" alt="" />' : '<div class="cover-thumb"></div>';
   const readMonthText = formatReadMonth(book.readMonth);
   const authorLine = book.author ? '<div class="book-author">' + escapeHtml(book.author) + '</div>' : "";
   const lineHtml = book.line ? '<div class="book-line">' + escapeHtml(book.line) + '</div>' : "";
@@ -1071,7 +1071,7 @@ function bookCardHtml(book, index, total, globalNum) {
           '<input type="text" data-field="cover" data-book="' + book.id + '" value="' + (book.cover && !book.cover.startsWith("data:") ? escapeHtml(book.cover) : "") + '" placeholder="이미지 URL 붙여넣기" />' +
           '<label class="upload-btn">사진 첨부<input type="file" accept="image/*" data-cover-upload="' + book.id + '" style="display:none" /></label>' +
         '</div>' +
-        (book.cover ? '<img class="cover-preview" src="' + book.cover + '" alt="" />' : '') +
+        (book.cover ? '<img class="cover-preview" src="' + escapeHtml(book.cover) + '" alt="" />' : '') +
       '</div>' +
       '<div class="field"><div class="field-label">읽음 상태</div><div class="status-row">' +
         STATUSES.map(s =>
