@@ -1261,7 +1261,7 @@ document.getElementById("googleLoginBtn").addEventListener("click", () => {
   errEl.textContent = "";
   if (!firebaseReady) { errEl.textContent = "로그인 서비스에 연결할 수 없어요. (firebaseReady=false)"; return; }
   try {
-    auth.signInWithRedirect(googleProvider).catch(e => {
+    auth.signInWithPopup(googleProvider).catch(e => {
       console.error(e);
       errEl.textContent = "로그인 실패: " + (e && (e.code || e.message) || String(e));
     });
