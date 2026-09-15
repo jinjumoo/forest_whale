@@ -1277,7 +1277,15 @@ window.addEventListener("error", (ev) => {
 });
 
 document.getElementById("logoutBtn").addEventListener("click", () => {
-  if (confirm("로그아웃할까요?")) auth.signOut();
+  if (!confirm("로그아웃할까요? 이 기기에 저장된 일지 데이터도 함께 지워져요.")) return;
+  auth.signOut().then(() => {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    try { localStorage.removeItem(TRASH_KEY); } catch (e) {}
+    books = [];
+    trash = [];
+    openId = null;
+    currentTab = "전체";
+  });
 });
 
 if ("serviceWorker" in navigator) {
