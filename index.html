@@ -353,14 +353,36 @@ if (firebaseReady) {
     } else {
       currentUid = null;
       detachFirestoreSync();
+      // 로그인되지 않은 상태에서는 기기에 남은 기록을 비워 노출을 막음
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      try { localStorage.removeItem(TRASH_KEY); } catch (e) {}
+      books = [];
+      trash = [];
+      openId = null;
+      try { render(); } catch (e) {}
       loginScreen.style.display = "flex";
       appRoot.style.display = "none";
     }
   });
 } else {
-  document.getElementById("loginScreen").style.display = "none";
-  document.getElementById("appRoot").style.display = "block";
-  setSyncStatus("오프라인 모드 (이 기기에만 저장됨)");
+  // 오프라인/연결 실패 시에도 앱을 열지 않음 (로그인 없이 기록이 노출되지 않도록)
+  document.getElementById("loginScreen").style.display = "flex";
+  document.getElementById("appRoot").style.display = "none";
+  const errEl = document.getElementById("authError");
+  if (errEl) errEl.textContent = "인터넷에 연결되지 않아 로그인할 수 없어요. 연결 후 다시 시도해주세요.";
+  // 아래 변수들이 모두 선언된 뒤에 기기에 남은 기록을 정리
+  setTimeout(function () {
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    try { localStorage.removeItem(TRASH_KEY); } catch (e) {}
+    try {
+      books = [];
+      trash = [];
+      openId = null;
+      render();
+    } catch (e) {}
+    document.getElementById("loginScreen").style.display = "flex";
+    document.getElementById("appRoot").style.display = "none";
+  }, 0);
 }
 
 
@@ -522,6 +544,24 @@ function escapeHtml(str) {
   return div.innerHTML;
 }
 
+// 속성값(value="...", src="...", title="...") 안에 넣을 때 사용.
+// escapeHtml은 따옴표를 이스케이프하지 않아 속성 컨텍스트에서는 안전하지 않음.
+function escapeAttr(str) {
+  return String(str == null ? "" : str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// 이미지 주소로 쓸 수 있는 형태인지 확인 (javascript: 등 차단)
+function safeImageSrc(str) {
+  const s = String(str == null ? "" : str).trim();
+  if (/^(https?:\/\/|data:image\/)/i.test(s)) return escapeAttr(s);
+  return "";
+}
+
 function starsHtml(rating, readOnly, bookId) {
   let html = '<div class="stars' + (readOnly ? ' small' : '') + '">';
   for (let n = 1; n <= 5; n++) {
@@ -568,7 +608,7 @@ function goToViewMode(mode) {
   const container = document.getElementById("swipeContainer");
   const overlay = document.getElementById("viewModeScrollOverlay");
   const indicator = document.getElementById("viewModeIndicator");
-  const idx = mode === "목록" ? 0 : 1;
+  const idx = mode === "목록" ? 1 : 0;
 
   if (!container) { render(); return; }
 
@@ -592,8 +632,8 @@ function renderViewModeToggle() {
       '<button class="view-mode-btn' + (viewMode === "스탬프" ? " active" : "") + '" data-view="스탬프">스탬프</button>' +
       '<button class="view-mode-btn' + (viewMode === "목록" ? " active" : "") + '" data-view="목록">목록</button>' +
       '<div class="view-mode-scroll-overlay" id="viewModeScrollOverlay">' +
-        '<div class="view-mode-slot" data-view="목록"></div>' +
         '<div class="view-mode-slot" data-view="스탬프"></div>' +
+        '<div class="view-mode-slot" data-view="목록"></div>' +
       '</div>' +
     '</div>';
 
@@ -601,16 +641,16 @@ function renderViewModeToggle() {
   indicator.style.transform = "translateX(" + (viewMode === "목록" ? "100%" : "0%") + ")";
 
   const overlay = document.getElementById("viewModeScrollOverlay");
-  overlay.scrollLeft = (viewMode === "목록" ? 0 : 1) * overlay.clientWidth;
+  overlay.scrollLeft = (viewMode === "목록" ? 1 : 0) * overlay.clientWidth;
 
   let overlaySyncing = false;
   overlay.addEventListener("scroll", () => {
     if (toggleSyncLock) return;
     const maxScroll = overlay.scrollWidth - overlay.clientWidth;
     const progress = maxScroll > 0 ? Math.min(1, Math.max(0, overlay.scrollLeft / maxScroll)) : 0;
-    indicator.style.transform = "translateX(" + ((1 - progress) * 100) + "%)";
+    indicator.style.transform = "translateX(" + (progress * 100) + "%)";
     document.querySelectorAll(".view-mode-btn").forEach(btn => {
-      btn.classList.toggle("active", btn.dataset.view === (progress < 0.5 ? "목록" : "스탬프"));
+      btn.classList.toggle("active", btn.dataset.view === (progress < 0.5 ? "스탬프" : "목록"));
     });
 
     const container = document.getElementById("swipeContainer");
@@ -623,7 +663,7 @@ function renderViewModeToggle() {
     clearTimeout(overlay._settleTimer);
     overlay._settleTimer = setTimeout(() => {
       const idx = Math.round(overlay.scrollLeft / overlay.clientWidth);
-      viewMode = idx === 0 ? "목록" : "스탬프";
+      viewMode = idx === 0 ? "스탬프" : "목록";
       updateAddButtonVisibility();
     }, 80);
   });
@@ -783,7 +823,7 @@ function renderSearchBar() {
   const el = document.getElementById("searchBar");
   if (!searchOpen) { el.innerHTML = ""; return; }
   el.innerHTML =
-    '<div class="search-bar"><input type="text" id="searchInput" placeholder="제목, 저자, 읽은 시기로 검색" value="' + escapeHtml(searchQuery) + '" /></div>';
+    '<div class="search-bar"><input type="text" id="searchInput" placeholder="제목, 저자, 읽은 시기로 검색" value="' + escapeAttr(searchQuery) + '" /></div>';
   const input = document.getElementById("searchInput");
   input.focus();
   input.setSelectionRange(input.value.length, input.value.length);
@@ -848,20 +888,20 @@ function renderAllTabSwipeable(el) {
 
   el.innerHTML =
     '<div class="swipe-container" id="swipeContainer">' +
-      '<div class="swipe-panel" id="panelList">' + listHtml + '</div>' +
       '<div class="swipe-panel" id="panelStamp">' + stampHtml + '</div>' +
+      '<div class="swipe-panel" id="panelList">' + listHtml + '</div>' +
     '</div>';
 
   attachBookEvents();
   renderSelectBar();
 
   const container = document.getElementById("swipeContainer");
-  const targetIndex = viewMode === "목록" ? 0 : 1;
+  const targetIndex = viewMode === "목록" ? 1 : 0;
   container.scrollLeft = targetIndex * container.clientWidth;
   const initMax = container.scrollWidth - container.clientWidth;
   const initProgress = initMax > 0 ? Math.min(1, Math.max(0, container.scrollLeft / initMax)) : 0;
   const initIndicator = document.getElementById("viewModeIndicator");
-  if (initIndicator) initIndicator.style.transform = "translateX(" + ((1 - initProgress) * 100) + "%)";
+  if (initIndicator) initIndicator.style.transform = "translateX(" + (initProgress * 100) + "%)";
 
   let scrollTimer;
   container.addEventListener("scroll", () => {
@@ -869,9 +909,9 @@ function renderAllTabSwipeable(el) {
     const maxScroll = container.scrollWidth - container.clientWidth;
     const progress = maxScroll > 0 ? Math.min(1, Math.max(0, container.scrollLeft / maxScroll)) : 0;
     const indicator = document.getElementById("viewModeIndicator");
-    if (indicator) indicator.style.transform = "translateX(" + ((1 - progress) * 100) + "%)";
+    if (indicator) indicator.style.transform = "translateX(" + (progress * 100) + "%)";
 
-    const closerMode = progress < 0.5 ? "목록" : "스탬프";
+    const closerMode = progress < 0.5 ? "스탬프" : "목록";
     document.querySelectorAll(".view-mode-btn").forEach(btn => {
       btn.classList.toggle("active", btn.dataset.view === closerMode);
     });
@@ -886,7 +926,7 @@ function renderAllTabSwipeable(el) {
     clearTimeout(scrollTimer);
     scrollTimer = setTimeout(() => {
       const idx = Math.round(container.scrollLeft / container.clientWidth);
-      const newMode = idx === 0 ? "목록" : "스탬프";
+      const newMode = idx === 0 ? "스탬프" : "목록";
       if (newMode !== viewMode) viewMode = newMode;
       updateAddButtonVisibility();
     }, 80);
@@ -937,7 +977,7 @@ function buildStampHtml() {
   const groupsHtml = keys.map(key => {
     const list = groups.get(key);
     const stampsHtml = list.map(book =>
-      '<div class="stamp-item" title="' + escapeHtml(book.title || "제목 없는 책") + '"><img src="' + WHALE_STAMP_SRC + '" alt="" /></div>'
+      '<div class="stamp-item" title="' + escapeAttr(book.title || "제목 없는 책") + '"><img src="' + WHALE_STAMP_SRC + '" alt="" /></div>'
     ).join("");
     return '<div class="stamp-month-group">' +
       '<div class="stamp-month-label">' + formatReadMonth(key) + '<span class="stamp-month-count">' + list.length + '권</span></div>' +
@@ -968,7 +1008,7 @@ function renderWishList(el) {
       (selectMode ? '<input type="checkbox" class="select-check" data-select="' + book.id + '"' + (selectedIds.has(book.id) ? ' checked' : '') + ' />' : '') +
       '<div class="wish-num">' + num + '</div>' +
       '<div class="spine" style="background:' + spineColorFor(book) + '"></div>' +
-      (book.cover ? '<img class="wish-cover" src="' + escapeHtml(book.cover) + '" alt="" />' : '<div class="wish-cover"></div>') +
+      (safeImageSrc(book.cover) ? '<img class="wish-cover" src="' + safeImageSrc(book.cover) + '" alt="" />' : '<div class="wish-cover"></div>') +
       '<div class="row-main">' +
         '<div class="wish-title">' + (escapeHtml(book.title) || "제목 없는 책") + '</div>' +
         (book.author ? '<div class="wish-author">' + escapeHtml(book.author) + '</div>' : '') +
@@ -1034,7 +1074,7 @@ function formatReadMonth(v) {
 function bookCardHtml(book, index, total, globalNum) {
   const spineColor = spineColorFor(book);
   const isOpen = openId === book.id;
-  const coverImg = book.cover ? '<img class="cover-thumb" src="' + escapeHtml(book.cover) + '" alt="" />' : '<div class="cover-thumb"></div>';
+  const coverImg = safeImageSrc(book.cover) ? '<img class="cover-thumb" src="' + safeImageSrc(book.cover) + '" alt="" />' : '<div class="cover-thumb"></div>';
   const readMonthText = formatReadMonth(book.readMonth);
   const authorLine = book.author ? '<div class="book-author">' + escapeHtml(book.author) + '</div>' : "";
   const lineHtml = book.line ? '<div class="book-line">' + escapeHtml(book.line) + '</div>' : "";
@@ -1063,15 +1103,15 @@ function bookCardHtml(book, index, total, globalNum) {
     '</div>' +
     '<div class="detail' + (isOpen && !selectMode ? ' open' : '') + '">' +
       '<div class="field"><div class="field-label">책 제목</div>' +
-        '<input type="text" data-field="title" data-book="' + book.id + '" value="' + escapeHtml(book.title) + '" placeholder="책 제목을 입력하세요" /></div>' +
+        '<input type="text" data-field="title" data-book="' + book.id + '" value="' + escapeAttr(book.title) + '" placeholder="책 제목을 입력하세요" /></div>' +
       '<div class="field"><div class="field-label">저자</div>' +
-        '<input type="text" data-field="author" data-book="' + book.id + '" value="' + escapeHtml(book.author || "") + '" placeholder="저자명을 입력하세요" /></div>' +
+        '<input type="text" data-field="author" data-book="' + book.id + '" value="' + escapeAttr(book.author || "") + '" placeholder="저자명을 입력하세요" /></div>' +
       '<div class="field"><div class="field-label">책 커버</div>' +
         '<div class="cover-input-row">' +
-          '<input type="text" data-field="cover" data-book="' + book.id + '" value="' + (book.cover && !book.cover.startsWith("data:") ? escapeHtml(book.cover) : "") + '" placeholder="이미지 URL 붙여넣기" />' +
+          '<input type="text" data-field="cover" data-book="' + book.id + '" value="' + (book.cover && !book.cover.startsWith("data:") ? escapeAttr(book.cover) : "") + '" placeholder="이미지 URL 붙여넣기" />' +
           '<label class="upload-btn">사진 첨부<input type="file" accept="image/*" data-cover-upload="' + book.id + '" style="display:none" /></label>' +
         '</div>' +
-        (book.cover ? '<img class="cover-preview" src="' + escapeHtml(book.cover) + '" alt="" />' : '') +
+        (safeImageSrc(book.cover) ? '<img class="cover-preview" src="' + safeImageSrc(book.cover) + '" alt="" />' : '') +
       '</div>' +
       '<div class="field"><div class="field-label">읽음 상태</div><div class="status-row">' +
         STATUSES.map(s =>
@@ -1089,7 +1129,7 @@ function bookCardHtml(book, index, total, globalNum) {
         '</div>' +
       '</div>' +
       '<div class="field"><div class="field-label">한줄 기록</div>' +
-        '<input type="text" data-field="line" data-book="' + book.id + '" value="' + escapeHtml(book.line) + '" placeholder="이 책을 한 문장으로 표현하면" /></div>' +
+        '<input type="text" data-field="line" data-book="' + book.id + '" value="' + escapeAttr(book.line) + '" placeholder="이 책을 한 문장으로 표현하면" /></div>' +
       '<div class="field"><div class="field-label">생각의 여백</div>' +
         '<textarea data-field="thoughts" data-book="' + book.id + '" placeholder="이 책이 남긴 질문이나 생각">' + escapeHtml(book.thoughts) + '</textarea></div>' +
       '<div class="field"><div class="field-label">마음에 남은 문장들</div>' +
