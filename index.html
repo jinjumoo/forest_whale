@@ -294,6 +294,11 @@
 </script>
 <script>
 const STORAGE_KEY = "forest-shelf-books";
+// 이 기기에서 로그인한 적이 있는지 (오프라인 사용 허용 기준)
+const LAST_UID_KEY = "forest-shelf-last-uid";
+// 기기에서 마지막으로 수정한 시각 (오프라인 수정분 보존용)
+const LOCAL_UPDATED_KEY = "forest-shelf-local-updated";
+let offlineMode = false;
 
 let currentUid = null;
 let unsubscribeSnapshot = null;
@@ -303,8 +308,20 @@ function setSyncStatus(text) {
   if (el) el.textContent = text;
 }
 
+// 기기에서 수정이 일어난 시각을 기록 (오프라인 수정분을 지키기 위해 사용)
+function markLocalEdit() {
+  try { localStorage.setItem(LOCAL_UPDATED_KEY, String(Date.now())); } catch (e) {}
+}
+
+function getLocalUpdated() {
+  try { return Number(localStorage.getItem(LOCAL_UPDATED_KEY) || 0); } catch (e) { return 0; }
+}
+
 function pushToFirestore() {
-  if (!firebaseReady || !currentUid) return;
+  if (!firebaseReady || offlineMode || !currentUid) {
+    if (offlineMode) setSyncStatus("오프라인 — 연결되면 자동 동기화돼요");
+    return;
+  }
   db.collection("users").doc(currentUid).set({ books: books, trash: trash, updatedAt: Date.now() })
     .then(() => setSyncStatus("동기화됨 ✓"))
     .catch(e => { console.error("push failed", e); setSyncStatus("동기화 실패 (오프라인?)"); });
@@ -316,10 +333,21 @@ function attachFirestoreSync(uid) {
     if (openId !== null) return; // don't disrupt an open edit
     if (snap.exists) {
       const data = snap.data() || {};
+      const serverUpdated = Number(data.updatedAt || 0);
+      const localUpdated = getLocalUpdated();
+
+      // 오프라인에서 고친 내용이 서버보다 최신이면, 덮어쓰지 않고 내 기기 내용을 올림
+      if (localUpdated && localUpdated > serverUpdated) {
+        setSyncStatus("오프라인 수정분 올리는 중...");
+        pushToFirestore();
+        return;
+      }
+
       books = Array.isArray(data.books) ? data.books.map(normalizeBook) : books;
       trash = Array.isArray(data.trash) ? data.trash.map(normalizeBookSafe) : trash;
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(books)); } catch (e) {}
       try { localStorage.setItem(TRASH_KEY, JSON.stringify(trash)); } catch (e) {}
+      try { localStorage.setItem(LOCAL_UPDATED_KEY, String(serverUpdated)); } catch (e) {}
       render();
       setSyncStatus("동기화됨 ✓");
     } else {
@@ -346,14 +374,19 @@ if (firebaseReady) {
     const appRoot = document.getElementById("appRoot");
     if (user) {
       currentUid = user.uid;
+      offlineMode = false;
+      try { localStorage.setItem(LAST_UID_KEY, user.uid); } catch (e) {}
       loginScreen.style.display = "none";
       appRoot.style.display = "block";
       setSyncStatus("동기화 중...");
       attachFirestoreSync(user.uid);
     } else {
       currentUid = null;
+      offlineMode = false;
       detachFirestoreSync();
       // 로그인되지 않은 상태에서는 기기에 남은 기록을 비워 노출을 막음
+      try { localStorage.removeItem(LAST_UID_KEY); } catch (e) {}
+      try { localStorage.removeItem(LOCAL_UPDATED_KEY); } catch (e) {}
       try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
       try { localStorage.removeItem(TRASH_KEY); } catch (e) {}
       books = [];
@@ -365,23 +398,32 @@ if (firebaseReady) {
     }
   });
 } else {
-  // 오프라인/연결 실패 시에도 앱을 열지 않음 (로그인 없이 기록이 노출되지 않도록)
-  document.getElementById("loginScreen").style.display = "flex";
-  document.getElementById("appRoot").style.display = "none";
-  const errEl = document.getElementById("authError");
-  if (errEl) errEl.textContent = "인터넷에 연결되지 않아 로그인할 수 없어요. 연결 후 다시 시도해주세요.";
-  // 아래 변수들이 모두 선언된 뒤에 기기에 남은 기록을 정리
+  // 인터넷 연결 실패: 이 기기에서 이미 로그인한 적이 있을 때만 오프라인으로 열어줌
   setTimeout(function () {
-    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
-    try { localStorage.removeItem(TRASH_KEY); } catch (e) {}
-    try {
-      books = [];
-      trash = [];
-      openId = null;
-      render();
-    } catch (e) {}
-    document.getElementById("loginScreen").style.display = "flex";
-    document.getElementById("appRoot").style.display = "none";
+    let lastUid = null;
+    try { lastUid = localStorage.getItem(LAST_UID_KEY); } catch (e) {}
+
+    if (lastUid) {
+      offlineMode = true;
+      currentUid = lastUid;
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("appRoot").style.display = "block";
+      setSyncStatus("오프라인 — 연결되면 자동 동기화돼요");
+    } else {
+      // 이 기기에서 한 번도 로그인한 적 없으면 기록을 지우고 로그인 화면 유지
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      try { localStorage.removeItem(TRASH_KEY); } catch (e) {}
+      try {
+        books = [];
+        trash = [];
+        openId = null;
+        render();
+      } catch (e) {}
+      document.getElementById("loginScreen").style.display = "flex";
+      document.getElementById("appRoot").style.display = "none";
+      const errEl = document.getElementById("authError");
+      if (errEl) errEl.textContent = "인터넷에 연결되지 않아 로그인할 수 없어요. 연결 후 다시 시도해주세요.";
+    }
   }, 0);
 }
 
@@ -428,6 +470,7 @@ let trash = loadTrash();
 function saveTrash() {
   try { localStorage.setItem(TRASH_KEY, JSON.stringify(trash)); }
   catch (e) { console.error("saveTrash failed", e); alert("저장 공간이 부족해서 휴지통 저장에 실패했어요. 휴지통을 비워보세요."); }
+  markLocalEdit();
   pushToFirestore();
 }
 
@@ -535,6 +578,7 @@ let openId = null;
 function saveBooks() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(books)); }
   catch (e) { console.error("saveBooks failed", e); alert("저장 공간이 부족해서 저장에 실패했어요. 사진 용량이 큰 책이 있다면 줄여보세요."); }
+  markLocalEdit();
   pushToFirestore();
 }
 
@@ -1318,14 +1362,28 @@ window.addEventListener("error", (ev) => {
 
 document.getElementById("logoutBtn").addEventListener("click", () => {
   if (!confirm("로그아웃할까요? 이 기기에 저장된 일지 데이터도 함께 지워져요.")) return;
-  auth.signOut().then(() => {
+
+  const clearLocal = () => {
+    try { localStorage.removeItem(LAST_UID_KEY); } catch (e) {}
+    try { localStorage.removeItem(LOCAL_UPDATED_KEY); } catch (e) {}
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
     try { localStorage.removeItem(TRASH_KEY); } catch (e) {}
     books = [];
     trash = [];
     openId = null;
+    currentUid = null;
+    offlineMode = false;
     currentTab = "전체";
-  });
+    try { render(); } catch (e) {}
+    document.getElementById("loginScreen").style.display = "flex";
+    document.getElementById("appRoot").style.display = "none";
+  };
+
+  if (firebaseReady && auth) {
+    auth.signOut().then(clearLocal).catch(clearLocal);
+  } else {
+    clearLocal();
+  }
 });
 
 if ("serviceWorker" in navigator) {
