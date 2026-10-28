@@ -1136,44 +1136,12 @@ function renderWishList(el) {
     renderSelectBar();
     return;
   }
-  el.innerHTML = '<div class="wish-list">' + visible.map(({ book, num }) =>
-    '<div class="wish-row" data-wish="' + book.id + '">' +
-      (selectMode ? '<input type="checkbox" class="select-check" data-select="' + book.id + '"' + (selectedIds.has(book.id) ? ' checked' : '') + ' />' : '') +
-      '<div class="wish-num">' + num + '</div>' +
-      '<div class="spine" style="background:' + spineColorFor(book) + '"></div>' +
-      (safeImageSrc(book.cover) ? '<img class="wish-cover" src="' + safeImageSrc(book.cover) + '" alt="" />' : '<div class="wish-cover"></div>') +
-      '<div class="row-main">' +
-        '<div class="wish-title">' + (escapeHtml(book.title) || "제목 없는 책") + '</div>' +
-        (book.author ? '<div class="wish-author">' + escapeHtml(book.author) + '</div>' : '') +
-      '</div>' +
-      '<span class="chevron">›</span>' +
-    '</div>'
-  ).join("") + '</div>';
-
-  el.querySelectorAll("[data-wish]").forEach(row => {
-    row.addEventListener("click", (e) => {
-      const id = Number(row.dataset.wish);
-      if (selectMode) {
-        if (e.target.matches("[data-select]")) return;
-        toggleSelect(id);
-        return;
-      }
-      const book = books.find(b => b.id === id);
-      if (book) {
-        book.status = "읽는 중";
-        saveBooks();
-        currentTab = "읽는 중";
-        openId = id;
-        render();
-      }
-    });
-  });
-
-  el.querySelectorAll("[data-select]").forEach(cb => {
-    cb.addEventListener("click", e => e.stopPropagation());
-    cb.addEventListener("change", () => toggleSelect(Number(cb.dataset.select)));
-  });
-
+  // 책 표지를 누르면 바로 "읽는 중"으로 바뀌던 예전 동작을 없애고,
+  // 다른 탭과 똑같이 펼쳐지는 상세 카드로 통일했어요.
+  // 이러면 내용을 적고 "저장"만 눌러도 상태가 임의로 바뀌지 않고,
+  // 상세 안의 "읽음 상태" 버튼을 직접 눌렀을 때만 상태가 바뀌어요.
+  el.innerHTML = visible.map(({ book, num }) => bookCardHtml(book, null, null, num)).join("");
+  attachBookEvents();
   renderSelectBar();
 }
 
