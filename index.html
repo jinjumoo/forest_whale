@@ -183,6 +183,11 @@
     .wish-cover { width: 42px; height: 54px; }
     .wish-title { font-size: 19px; }
     .wish-author { font-size: 14px; }
+    /* 웹(넓은 화면)에서만: 한글 폰트(Song Myung)는 굵기가 400 하나뿐이라
+       600/700을 쓰면 획이 뭉개져 보여서 보통 굵기로 맞춤. 모바일은 그대로. */
+    .view-mode-btn.active, .stamp-year-title, .row-month-tag, .add-btn,
+    .google-btn, .toast button { font-weight: 400; }
+    .stamp-year-title { font-size: 24px; }
   }
   .wish-list { background: #fbf9f3; border-radius: 14px; border: 1px solid #d8e0d2; overflow: hidden; }
   .wish-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; border-bottom: 1px solid #eef2ea; }
