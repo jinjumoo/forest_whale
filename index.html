@@ -1295,10 +1295,17 @@ function attachBookEvents() {
       const id = Number(btn.dataset.save);
       const book = books.find(b => b.id === id);
       saveBooks();
-      openId = null;
-      currentTab = "전체";
+      // 저장해도 일지를 닫지 않음. 상태를 바꿔서 지금 탭에서 사라질 경우에만
+      // 그 책이 속한 탭으로 옮겨서 계속 열어둠
+      if (book && currentTab !== "전체" && book.status !== currentTab) currentTab = book.status;
+      const y = window.scrollY;
       render();
-      if (book) showSavedToast(book);
+      window.scrollTo(0, y);
+      if (book) {
+        const statusEl = document.getElementById("save-status-" + id);
+        if (statusEl) statusEl.textContent = "저장됨 ✓";
+        showSavedToast(book);
+      }
     });
   });
 
@@ -1346,7 +1353,11 @@ function attachBookEvents() {
       const book = books.find(b => b.id === id);
       if (book) {
         book.status = btn.dataset.status;
+        // 상태를 바꾸면 그 책이 속한 탭으로 따라가서 열린 채로 유지
+        if (currentTab !== "전체") currentTab = book.status;
+        const y = window.scrollY;
         render();
+        window.scrollTo(0, y);
         const statusEl = document.getElementById("save-status-" + id);
         if (statusEl) statusEl.textContent = "저장 안 된 변경사항 있음";
       }
